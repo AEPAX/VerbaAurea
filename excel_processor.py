@@ -5,6 +5,7 @@ from typing import List
 
 import pandas as pd
 import xlrd
+from bs4 import BeautifulSoup
 from openpyxl import load_workbook
 from openpyxl.utils import range_boundaries
 
@@ -43,7 +44,7 @@ class ExcelParser:
     支持.csv
     """
 
-    def parse(self, input_data: str | Path | bytes | BytesIO, verbose=True) -> List[str]:
+    def parse(self, input_data: str | Path | bytes | BytesIO, verbose=True, output_format='markdown') -> List[str]:
         """
         支持文件路径,Path,文件的bytes以及BytesIO
         """
@@ -64,27 +65,24 @@ class ExcelParser:
 
         file_type = xlrd.inspect_format(content=file_bytes)
 
-        if file_type == 'xls':
-            # ---------- 使用 xlrd 处理 .xls ----------
-            try:
-                parse_res = self.parse_xlrd(file_bytes, verbose=verbose)
-            except xlrd.biffh.XLRDError as e:
-                raise ValueError("无法解析 .xls 文件，可能已损坏") from e
-        elif file_type == 'xlsx':
-            # ---------- 使用 openpyxl 处理 .xlsx ----------
-            try:
-                parse_res = self.parse_openpyxl(file_bytes, verbose=verbose)
-            except KeyError as e:
-                raise ValueError("无法解析 .xlsx 文件，可能已损坏") from e
-        else:
-            try:
-                parse_res = self.parse_csv(file_bytes)
-            except Exception as e:
-                raise ValueError("无法解析 .csv 文件，可能已损坏") from e
+        parsers = {
+            'xls': (self.parse_xlrd, xlrd.biffh.XLRDError, "无法解析 .xls 文件，可能已损坏"),
+            'xlsx': (self.parse_openpyxl, KeyError, "无法解析 .xlsx 文件，可能已损坏"),
+            'csv': (self.parse_csv, Exception, "无法解析 .csv 文件，可能已损坏")
+        }
+        parser, error_type, error_message = parsers.get(file_type, (
+            None, Exception, "无法解析文件，未知格式，当前只支持.xls/.xlsx/.csv格式"))
+
+        if parser is None:
+            raise ValueError(error_message)
+        try:
+            parse_res = parser(file_bytes, verbose=verbose, output_format=output_format)
+        except error_type as e:
+            raise ValueError(error_message) from e
         return parse_res
 
     @staticmethod
-    def parse_openpyxl(file_data: bytes, verbose=True) -> List[str]:
+    def parse_openpyxl(file_data: bytes, verbose=True, output_format='markdown') -> List[str]:
         """
         将表格解析转换成markdown格式,只支持xlsx格式
         """
@@ -103,16 +101,23 @@ class ExcelParser:
                         print(f"跳过空工作表: {sheet_name}", file=sys.stderr)
                     continue
 
-                merge_map = {}
-
+                merge_map = {}  # 记录合并单元格value
+                merge_cell = {}  # 记录被合并单元格坐标
+                merge_info = {}  # 记录合并单元格起始位置以及跨度
                 # 构建合并单元格值映射表
                 for merge_range in ws.merged_cells.ranges:
                     min_col, min_row, max_col, max_row = range_boundaries(merge_range.coord)
                     master_value = ws.cell(min_row, min_col).value
+                    merge_info[(min_row, min_col)] = (
+                        max_row - min_row + 1,
+                        max_col - min_col + 1
+                    )
                     # 为合并区域所有单元格记录主值
                     for row in range(min_row, max_row + 1):
                         for col in range(min_col, max_col + 1):
                             merge_map[(row, col)] = master_value
+                            if (row, col) != (min_row, min_col):
+                                merge_cell[(row, col)] = True  # 记录被合并的单元格
 
                 try:
                     df = pd.read_excel(xls, sheet_name=sheet_name, header=None).astype(str)
@@ -134,19 +139,53 @@ class ExcelParser:
                     # 确保索引不越界
                     if df_row < df.shape[0] and df_col < df.shape[1]:
                         df.iat[df_row, df_col] = str(value)
+                # ==================== 转markdown ====================
+                if output_format == 'markdown':
+                    md_table = df.to_markdown()
+                    # 添加表格元数据
+                    md_table = f"# Sheet: {sheet_name}\n{md_table}"
+                    result.append(md_table)
+                else:
+                    soup = BeautifulSoup(features='html.parser')
+                    table = soup.new_tag('table', border="1")
 
-                md_table = df.to_markdown()
+                    thead = soup.new_tag('thead')  # 表头有多少行不好去确定
+                    # tbody = soup.new_tag('tbody')  # TODO:本来想表头和数据部分分开 但是发现不好确定表头行数
 
-                # 添加表格元数据
-                md_table = f"# Sheet: {sheet_name}\n{md_table}"
+                    # max_header_rows = 3
+                    max_header_rows = df.shape[0]
+                    for row_idx in range(max_header_rows):
+                        tr = soup.new_tag('tr')
+                        col_idx = 0  # 列索引 (0-based)
+                        while col_idx < df.shape[1]:
+                            # 转换为 openpyxl 的 1-based 索引
+                            cell_pos = (row_idx + 1, col_idx + 1)
 
-                result.append(md_table)
+                            if cell_pos in merge_info:
+                                rowspan, colspan = merge_info[cell_pos]
+                                cell_value = ws.cell(*cell_pos).value
+                                th = soup.new_tag('th', rowspan=str(rowspan), colspan=str(colspan))
+                                th.string = str(cell_value)
+                                tr.append(th)
+                                col_idx += colspan
+                            else:
+                                if cell_pos not in merge_cell:
+                                    th = soup.new_tag('th')
+                                    th.string = str(df.iat[row_idx, col_idx])
+                                    tr.append(th)
+                                col_idx += 1
 
-        # table = "\n\n".join(res)
+                        thead.append(tr)
+                    table.append(thead)
+                    result.append(str(table.prettify()))
         return result
 
     @staticmethod
-    def parse_xlrd(file_data: bytes, verbose=True) -> List[str]:  # .xls
+    def parse_xlrd(file_data: bytes, verbose=True, output_format='markdown') -> List[str]:  # .xls
+        """
+        将表格解析转换成markdown格式,只支持xls格式
+        支持转换为html的表格格式输出 更好适应多级表头
+        """
         if not isinstance(file_data, bytes):
             raise ValueError("file_data must be bytes")
         file_bio = BytesIO(file_data)
@@ -164,16 +203,23 @@ class ExcelParser:
                 print(f"跳过空工作表: {sheet_name}", file=sys.stderr)
                 continue
 
-            merge_map = {}
-
+            merge_map = {}  # 记录合并单元格value
+            merge_cell = {}  # 记录被合并单元格坐标
+            merge_info = {}  # 记录合并单元格起始位置以及跨度
             for merged_cell in ws.merged_cells:
                 # cell (rlo, clo) (the top left one) will carry the data
                 # rlo, rhi, clo, chi = merged_cell
                 min_row, max_row, min_col, max_col = merged_cell
                 master_value = ws.cell_value(min_row, min_col)
+                merge_info[(min_row, min_col)] = (
+                    max_row - min_row + 1,
+                    max_col - min_col + 1
+                )
                 for row in range(min_row, max_row):
                     for col in range(min_col, max_col):
                         merge_map[(row, col)] = master_value
+                        if (row, col) != (min_row, min_col):
+                            merge_cell[(row, col)] = True  # 记录被合并的单元格
 
             try:
                 df = pd.read_excel(file_bio, sheet_name=sheet_name, header=None).astype(str)
@@ -196,17 +242,53 @@ class ExcelParser:
                 if df_row < df.shape[0] and df_col < df.shape[1]:
                     df.iat[df_row, df_col] = str(value)
 
-            md_table = df.to_markdown()
+            # ==================== 转markdown ====================
+            if output_format == 'markdown':
+                md_table = df.to_markdown()
+                # 添加表格元数据
+                md_table = f"# Sheet: {sheet_name}\n{md_table}"
+                result.append(md_table)
+            else:
+                soup = BeautifulSoup(features='html.parser')
+                table = soup.new_tag('table', border="1")
 
-            # 添加表格元数据
-            md_table = f"# Sheet: {sheet_name}\n{md_table}"
+                thead = soup.new_tag('thead')  # 表头有多少行不好去确定
+                # tbody = soup.new_tag('tbody')  # TODO:本来想表头和数据部分分开 但是发现不好确定表头行数
 
-            result.append(md_table)
+                # max_header_rows = 3
+                max_header_rows = df.shape[0]
+                for row_idx in range(max_header_rows):
+                    tr = soup.new_tag('tr')
+                    col_idx = 0  # 列索引 (0-based)
+                    while col_idx < df.shape[1]:
+                        # 转换为 xlrd 的based 索引
+                        cell_pos = (row_idx, col_idx)
+                        if cell_pos in merge_info:
+                            rowspan, colspan = merge_info[cell_pos]
+                            cell_value = ws.cell_value(*cell_pos)
+                            th = soup.new_tag('th', rowspan=str(rowspan), colspan=str(colspan))
+                            th.string = str(cell_value)
+                            tr.append(th)
+                            col_idx += colspan
+                        else:
+                            if cell_pos not in merge_cell:
+                                th = soup.new_tag('th')
+                                th.string = str(df.iat[row_idx, col_idx])
+                                tr.append(th)
+                            col_idx += 1
+
+                    thead.append(tr)
+                table.append(thead)
+                result.append(str(table.prettify()))
 
         return result
 
     @staticmethod
-    def parse_csv(file_data: bytes) -> List[str]:
+    def parse_csv(file_data: bytes, verbose=True, output_format='markdown') -> List[str]:
+        """
+        将csv表格解析转换成markdown格式
+        支持转换为html的表格格式输出 更好适应多级表头
+        """
         if not isinstance(file_data, bytes):
             raise ValueError("file_data must be bytes")
         file_bio = BytesIO(file_data)
@@ -216,9 +298,11 @@ class ExcelParser:
         if df.map(lambda x: x.strip() if isinstance(x, str) else '').eq('').all().all():
             raise ValueError("Empty dataframe")
 
-        md_table = df.to_markdown()
+        if output_format == 'markdown':
+            table = df.to_markdown()
+            # 添加表格元数据
+            table = f"# Table: \n{table}"
+        else:
+            table = df.to_html()
 
-        # 添加表格元数据
-        md_table = f"# Table: \n{md_table}"
-
-        return [md_table]
+        return [table]
