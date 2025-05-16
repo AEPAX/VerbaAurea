@@ -49,7 +49,7 @@ class ExcelParser:
         支持文件路径,Path,文件的bytes以及BytesIO
         """
         if isinstance(input_data, (str, Path)):
-            path = Path(input_data)
+            path = Path(input_data) if isinstance(input_data, str) else input_data
             if not path.exists():
                 raise FileNotFoundError(f'{path} is not exists.')
             if not path.is_file():
@@ -63,7 +63,15 @@ class ExcelParser:
         else:
             raise TypeError(f'{input_data} is not a valid type. 输入类型必须是路径、bytes 或 BytesIO')
 
-        file_type = xlrd.inspect_format(content=file_bytes)
+        try:
+            if isinstance(input_data, str) and input_data.endswith('.csv'):
+                file_type = 'csv'
+            elif isinstance(input_data, Path) and input_data.suffix == '.csv':
+                file_type = 'csv'
+            else:
+                file_type = xlrd.inspect_format(content=file_bytes)
+        except Exception:
+            raise ValueError('无法解析文件，未知格式，当前只支持.xls/.xlsx/.csv格式')
 
         parsers = {
             'xls': (self.parse_xlrd, xlrd.biffh.XLRDError, "无法解析 .xls 文件，可能已损坏"),
