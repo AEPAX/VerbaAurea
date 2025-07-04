@@ -3,7 +3,9 @@
   "max_length": 1000,
   "min_length": 300,
   "sentence_integrity_weight": 8.0,
-  "table_length_factor": 1.2
+  "table_length_factor": 1.2,
+  "image_length_factor": 100,
+  "preserve_images": true
   },
   "processing_options": {
     "debug_mode": false,

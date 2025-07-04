@@ -12,6 +12,7 @@ import nltk
 from nltk.tokenize import sent_tokenize
 from docx.oxml.text.paragraph import CT_P
 from docx.oxml.table import CT_Tbl
+from docx.oxml.ns import qn
 
 # ---------- NLTK 资源 ----------
 try:
@@ -53,6 +54,73 @@ def looks_like_heading(text: str) -> bool:
         if pat.match(stripped):
             return True
     return False
+
+
+def has_inline_images(paragraph):
+    """检查段落是否包含内联图片"""
+    try:
+        # 检查段落中的所有run
+        for run in paragraph.runs:
+            # 检查run中是否有内联形状（图片）
+            if hasattr(run._element, 'xpath'):
+                # 查找内联图片元素
+                inline_shapes = run._element.xpath('.//w:drawing//wp:inline')
+                if inline_shapes:
+                    return True
+        return False
+    except Exception:
+        return False
+
+
+def count_inline_images(paragraph):
+    """计算段落中内联图片的数量"""
+    try:
+        count = 0
+        for run in paragraph.runs:
+            if hasattr(run._element, 'xpath'):
+                inline_shapes = run._element.xpath('.//w:drawing//wp:inline')
+                count += len(inline_shapes)
+        return count
+    except Exception:
+        return 0
+
+
+def get_paragraph_image_info(paragraph):
+    """获取段落中图片的详细信息"""
+    try:
+        images = []
+        for run in paragraph.runs:
+            if hasattr(run._element, 'xpath'):
+                inline_shapes = run._element.xpath('.//w:drawing//wp:inline')
+                for shape in inline_shapes:
+                    # 尝试获取图片的基本信息
+                    try:
+                        # 获取图片的extent信息（尺寸）
+                        extent = shape.xpath('.//wp:extent')[0] if shape.xpath('.//wp:extent') else None
+                        width = int(extent.get('cx')) if extent is not None else 0
+                        height = int(extent.get('cy')) if extent is not None else 0
+
+                        # 获取图片的关系ID
+                        blip = shape.xpath('.//a:blip')[0] if shape.xpath('.//a:blip') else None
+                        r_embed = blip.get(qn('r:embed')) if blip is not None else None
+
+                        images.append({
+                            'width': width,
+                            'height': height,
+                            'r_embed': r_embed,
+                            'element': shape
+                        })
+                    except Exception:
+                        # 如果获取详细信息失败，至少记录存在图片
+                        images.append({
+                            'width': 0,
+                            'height': 0,
+                            'r_embed': None,
+                            'element': shape
+                        })
+        return images
+    except Exception:
+        return []
 # ------------------------------------------------------------------
 
 
@@ -101,9 +169,13 @@ def find_nearest_sentence_boundary(paragraphs_info, current_index, search_window
 
 
 # =================== 主入口：extract_elements_info ===================
-def extract_elements_info(doc, table_length_factor=1.0, debug_mode=False):
+def extract_elements_info(doc, table_length_factor=1.0, debug_mode=False, image_length_factor=100):
     """
     按文档布局顺序抽出段落/表格等元素信息
+    现在也包括图片信息
+
+    参数:
+    - image_length_factor: 每个图片按多少个字符计算长度（默认100）
     """
     elements = []
     para_idx = -1
@@ -124,15 +196,30 @@ def extract_elements_info(doc, table_length_factor=1.0, debug_mode=False):
                 (len(text) > 2 and text[0].isdigit() and text[1] in '.、)')
             ends_with_period = text.endswith(('。', '！', '？', '.', '!', '?', '；', ';'))
 
+            # 检查段落中是否包含图片
+            has_images = has_inline_images(p)
+            image_count = count_inline_images(p)
+            image_info = get_paragraph_image_info(p) if has_images else []
+
+            # 计算段落长度，如果包含图片，给图片一个权重
+            base_length = len(text)
+            # 每个图片按配置的字符数计算
+            image_length = image_count * image_length_factor
+            total_length = base_length + image_length
+
             elements.append({
                 'type': 'para',
                 'i_para': para_idx,
                 'i_table': None,
                 'text': text,
-                'length': len(text),
+                'length': total_length,
+                'base_text_length': base_length,
                 'is_heading': is_heading,
                 'is_list_item': is_list_item,
-                'ends_with_period': ends_with_period
+                'ends_with_period': ends_with_period,
+                'has_images': has_images,
+                'image_count': image_count,
+                'image_info': image_info
             })
 
         # -------- 表格 --------
@@ -153,14 +240,20 @@ def extract_elements_info(doc, table_length_factor=1.0, debug_mode=False):
                 'i_table': tbl_idx,
                 'text': tbl_text,
                 'length': tbl_len,
+                'base_text_length': len(tbl_text),
                 'is_heading': False,
                 'is_list_item': False,
-                'ends_with_period': True
+                'ends_with_period': True,
+                'has_images': False,
+                'image_count': 0,
+                'image_info': []
             })
 
     if debug_mode:
         tbl_cnt = tbl_idx + 1
-        print(f"[extract] elements={len(elements)} (tables={tbl_cnt})")
+        img_cnt = sum(1 for elem in elements if elem.get('has_images', False))
+        total_images = sum(elem.get('image_count', 0) for elem in elements)
+        print(f"[extract] elements={len(elements)} (tables={tbl_cnt}, paragraphs_with_images={img_cnt}, total_images={total_images})")
     return elements
 # ====================================================================
 

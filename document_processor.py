@@ -15,6 +15,9 @@ from text_analysis import (
 )
 from docx.oxml.text.paragraph import CT_P
 from docx.oxml.table import CT_Tbl
+from docx.oxml.ns import qn
+from io import BytesIO
+from copy import deepcopy
 
 
 def insert_split_markers(input_file, output_file, config):
@@ -61,9 +64,10 @@ def insert_split_markers(input_file, output_file, config):
     # 创建新文档
     new_doc = Document()
 
-    # 统一提取段落 + 表格
+    # 统一提取段落 + 表格 + 图片
     table_factor = config.get("document_settings", {}).get("table_length_factor", 1.0)
-    elements_info = extract_elements_info(doc, table_factor, debug_mode)
+    image_factor = config.get("document_settings", {}).get("image_length_factor", 100)
+    elements_info = extract_elements_info(doc, table_factor, debug_mode, image_factor)
 
     if debug_mode:
         print(f"文档共有 {len(elements_info)} 个元素（段落 + 表格）")
@@ -94,7 +98,8 @@ def insert_split_markers(input_file, output_file, config):
         new_doc,
         final_split_points,
         output_file,
-        debug_mode
+        debug_mode,
+        config
     )
 
     return result
@@ -289,6 +294,42 @@ def merge_heading_with_body(elements_info, split_points):
 
 
 
+def copy_image_relationships(source_doc, target_doc, debug_mode=False):
+    """
+    复制源文档中的图片关系到目标文档
+    返回一个映射字典：{old_rId: new_rId}
+    """
+    rId_mapping = {}
+    try:
+        for rId in source_doc.part.rels:
+            rel = source_doc.part.rels[rId]
+            if "image" in rel.target_ref:
+                try:
+                    # 获取图片二进制数据
+                    img_part = rel.target_part
+                    img_data = img_part._blob
+
+                    # 创建新的图片部分
+                    my_bytesio = BytesIO(img_data)
+                    image_part = target_doc.part.package.get_or_add_image_part(my_bytesio)
+
+                    # 创建新的关系
+                    new_rId = target_doc.part.relate_to(image_part, 'image')
+                    rId_mapping[rId] = new_rId
+
+                    if debug_mode:
+                        print(f"  图片关系复制: {rId} -> {new_rId} ({len(img_data)/1024:.1f}KB)")
+
+                except Exception as e:
+                    if debug_mode:
+                        print(f"  警告: 复制图片关系 {rId} 时出错: {str(e)}")
+    except Exception as e:
+        if debug_mode:
+            print(f"  警告: 复制图片关系时出错: {str(e)}")
+
+    return rId_mapping
+
+
 def copy_single_table(table, new_doc, debug_mode):
     """复制单个表格"""
     if table is None:  # ← 兜底
@@ -319,13 +360,27 @@ def copy_single_table(table, new_doc, debug_mode):
             print(f"  警告: 处理表格时出错: {str(e)}")
 
 
-def create_output_document(doc, new_doc, split_points, output_file, debug_mode):
+def create_output_document(doc, new_doc, split_points, output_file, debug_mode, config=None):
     split_marker_cnt = 0
     para_iter = iter(doc.paragraphs)
     tbl_iter  = iter(doc.tables)
     next_para = next(para_iter, None)
     next_tbl  = next(tbl_iter, None)
     idx = -1
+
+    # 检查是否需要保留图片
+    preserve_images = True
+    if config:
+        preserve_images = config.get("document_settings", {}).get("preserve_images", True)
+
+    # 复制图片关系（如果启用图片保留）
+    rId_mapping = {}
+    if preserve_images:
+        rId_mapping = copy_image_relationships(doc, new_doc, debug_mode)
+        if debug_mode and rId_mapping:
+            print(f"  复制了 {len(rId_mapping)} 个图片关系")
+    elif debug_mode:
+        print("  图片保留功能已禁用")
 
     # 将 Word DOM 再次顺序遍历
     for el in doc._element.body:
@@ -336,7 +391,10 @@ def create_output_document(doc, new_doc, split_points, output_file, debug_mode):
 
         if isinstance(el, CT_P):
             # —— 段落 ——
-            copy_paragraph(next_para, new_doc, debug_mode)
+            if preserve_images:
+                copy_paragraph(next_para, new_doc, debug_mode, rId_mapping)
+            else:
+                copy_paragraph_text_only(next_para, new_doc, debug_mode)
             next_para = next(para_iter, None)
         elif isinstance(el, CT_Tbl):
             # —— 表格 ——
@@ -352,8 +410,33 @@ def create_output_document(doc, new_doc, split_points, output_file, debug_mode):
 
 
 
-def copy_paragraph(src_para, new_doc, debug_mode):
-    """复制段落内容和格式"""
+def copy_paragraph(src_para, new_doc, debug_mode, rId_mapping=None):
+    """
+    复制段落内容和格式，包括图片
+    rId_mapping: 图片关系ID映射字典
+    """
+    # 检查段落是否包含图片
+    has_images = False
+    try:
+        for run in src_para.runs:
+            if hasattr(run._element, 'xpath'):
+                inline_shapes = run._element.xpath('.//w:drawing//wp:inline')
+                if inline_shapes:
+                    has_images = True
+                    break
+    except:
+        pass
+
+    if has_images and rId_mapping:
+        # 如果段落包含图片，需要特殊处理
+        copy_paragraph_with_images(src_para, new_doc, debug_mode, rId_mapping)
+    else:
+        # 原有的文本复制逻辑
+        copy_paragraph_text_only(src_para, new_doc, debug_mode)
+
+
+def copy_paragraph_text_only(src_para, new_doc, debug_mode):
+    """复制段落的文本内容和格式（不包括图片）"""
     text = src_para.text
     new_para = new_doc.add_paragraph(text)
 
@@ -385,4 +468,128 @@ def copy_paragraph(src_para, new_doc, debug_mode):
     except Exception as e:
         if debug_mode:
             print(f"  警告: 复制格式时出错: {str(e)}")
+
+
+def copy_paragraph_with_images(src_para, new_doc, debug_mode, rId_mapping):
+    """复制包含图片的段落"""
+    try:
+        # 创建新段落
+        new_para = new_doc.add_paragraph()
+
+        # 复制段落级别的格式
+        if src_para.style:
+            new_para.style = src_para.style
+        new_para.alignment = src_para.alignment
+
+        # 逐个复制runs，包括文本和图片
+        for src_run in src_para.runs:
+            # 检查run是否包含图片
+            has_inline_images = False
+            try:
+                if hasattr(src_run._element, 'xpath'):
+                    inline_shapes = src_run._element.xpath('.//w:drawing//wp:inline')
+                    has_inline_images = len(inline_shapes) > 0
+            except:
+                pass
+
+            if has_inline_images:
+                # 复制包含图片的run
+                copy_run_with_images(src_run, new_para, debug_mode, rId_mapping)
+            else:
+                # 复制普通文本run
+                copy_text_run(src_run, new_para, debug_mode)
+
+    except Exception as e:
+        if debug_mode:
+            print(f"  警告: 复制包含图片的段落时出错: {str(e)}")
+        # 降级到纯文本复制
+        copy_paragraph_text_only(src_para, new_doc, debug_mode)
+
+
+def copy_text_run(src_run, new_para, debug_mode):
+    """复制文本run"""
+    try:
+        new_run = new_para.add_run(src_run.text)
+
+        # 复制run级别的格式
+        for attr in ['bold', 'italic', 'underline']:
+            if hasattr(src_run, attr):
+                setattr(new_run, attr, getattr(src_run, attr))
+
+        # 复制字体属性
+        if hasattr(src_run, 'font') and hasattr(new_run, 'font'):
+            for attr in ['size', 'name', 'color']:
+                try:
+                    if hasattr(src_run.font, attr):
+                        src_value = getattr(src_run.font, attr)
+                        if src_value:
+                            setattr(new_run.font, attr, src_value)
+                except:
+                    pass
+    except Exception as e:
+        if debug_mode:
+            print(f"  警告: 复制文本run时出错: {str(e)}")
+
+
+def copy_run_with_images(src_run, new_para, debug_mode, rId_mapping):
+    """复制包含图片的run"""
+    try:
+        # 先添加文本部分
+        if src_run.text:
+            text_run = new_para.add_run(src_run.text)
+            # 复制文本格式
+            for attr in ['bold', 'italic', 'underline']:
+                if hasattr(src_run, attr):
+                    setattr(text_run, attr, getattr(src_run, attr))
+
+        # 处理图片
+        if hasattr(src_run._element, 'xpath'):
+            inline_shapes = src_run._element.xpath('.//w:drawing//wp:inline')
+            for shape in inline_shapes:
+                try:
+                    copy_inline_image(shape, new_para, debug_mode, rId_mapping)
+                except Exception as e:
+                    if debug_mode:
+                        print(f"  警告: 复制内联图片时出错: {str(e)}")
+
+    except Exception as e:
+        if debug_mode:
+            print(f"  警告: 复制包含图片的run时出错: {str(e)}")
+
+
+def copy_inline_image(shape_element, new_para, debug_mode, rId_mapping):
+    """复制内联图片"""
+    try:
+        # 获取图片的关系ID
+        blip = shape_element.xpath('.//a:blip')[0] if shape_element.xpath('.//a:blip') else None
+        if blip is None:
+            return
+
+        old_rId = blip.get(qn('r:embed'))
+        if old_rId not in rId_mapping:
+            if debug_mode:
+                print(f"  警告: 找不到图片关系映射: {old_rId}")
+            return
+
+        new_rId = rId_mapping[old_rId]
+
+        # 复制整个drawing元素并更新关系ID
+        drawing_element = shape_element.getparent().getparent()  # 获取w:drawing元素
+        new_drawing = deepcopy(drawing_element)
+
+        # 更新新drawing中的关系ID
+        for new_blip in new_drawing.xpath('.//a:blip'):
+            if new_blip.get(qn('r:embed')) == old_rId:
+                new_blip.set(qn('r:embed'), new_rId)
+
+        # 将新的drawing添加到新段落的run中
+        new_run = new_para.add_run()
+        new_run._element.append(new_drawing)
+
+        if debug_mode:
+            print(f"  图片复制成功: {old_rId} -> {new_rId}")
+
+    except Exception as e:
+        if debug_mode:
+            print(f"  警告: 复制内联图片时出错: {str(e)}")
 
