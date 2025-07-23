@@ -109,7 +109,7 @@ register_processor('.pdf', PDFProcessor)
 
 1. **克隆项目**
 ```bash
-git clone https://github.com/yourusername/VerbaAurea.git
+git clone https://github.com/AEPAX/VerbaAurea.git
 cd VerbaAurea
 ```
 
