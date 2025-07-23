@@ -24,20 +24,52 @@ VerbaAurea is an intelligent document preprocessing tool dedicated to transformi
 - **Content Management** - Improves document organization in content management systems
 
   
-## Project Structure
+## 🏗️ Project Architecture
+
+VerbaAurea adopts a modern layered modular architecture:
+
 ```
-├── main.py                 # Main program entry
-├── config_manager.py       # Configuration management
-├── document_processor.py   # Document processing core
-├── text_analysis.py        # Text analysis functionality
-├── parallel_processor.py   # Parallel processing implementation
-├── utils.py                # Utility functions
-├── config.json             # Auto-generated configuration file
-├── requirements.txt        # Project dependencies
-├── README.md               # Chinese documentation
-├── README_EN.md            # English documentation
-├── LICENSE                 # Open source license
-└── Documents or document folders...
+├── main.py                 # Main program entry (using new architecture CLI)
+├── start_api.py            # API service startup script
+├── verba_aurea/            # New architecture core module
+│   ├── core/              # Core business logic
+│   │   ├── analyzers/     # Document analyzers
+│   │   ├── models/        # Data models
+│   │   ├── processors/    # Document processors
+│   │   └── splitters/     # Document splitters
+│   ├── services/          # Service layer
+│   │   ├── document_service.py    # Document service
+│   │   └── processing_service.py  # Processing service
+│   ├── interfaces/        # Interface layer
+│   │   ├── api/          # API interface adapter
+│   │   └── cli/          # Command line interface
+│   ├── config/           # Configuration management
+│   │   ├── settings.py   # Configuration settings
+│   │   └── manager.py    # Configuration manager
+│   ├── tests/            # Test suite
+│   │   ├── api/         # API tests
+│   │   ├── functional/  # Functional tests
+│   │   ├── unit/        # Unit tests
+│   │   └── integration/ # Integration tests
+│   └── legacy_adapter.py # Backward compatibility adapter
+├── api/                   # API service directory (compatibility layer)
+│   ├── main.py           # FastAPI application entry
+│   ├── models/           # Data models
+│   ├── routers/          # API routes
+│   ├── services/         # Business services
+│   ├── utils/            # API utilities
+│   ├── middleware/       # Middleware
+│   └── config/           # API configuration
+├── config.json           # Configuration file
+├── requirements.txt      # Basic dependencies
+├── requirements-api.txt  # API service dependencies
+├── Dockerfile            # Docker build file
+├── docker-compose.yml    # Docker Compose configuration
+├── API_README.md         # API service detailed documentation
+├── README.md             # Chinese documentation
+├── README_EN.md          # English documentation
+├── LICENSE               # Open source license
+└── 企业库/               # Sample document directory
 ```
 
 
@@ -64,7 +96,7 @@ VerbaAurea is an intelligent document preprocessing tool dedicated to transformi
 1. Clone the project locally
 
 ```bash
-git clone https://github.com/AEPAX/VerbaAurea.git
+git clone https://github.com/yourusername/VerbaAurea.git
 cd VerbaAurea
 ```
 
