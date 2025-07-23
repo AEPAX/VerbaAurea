@@ -1,17 +1,52 @@
 # 📚 VerbaAurea 🌟
 
-中文 [中文](./README.md) | 英文 [English](./README_EN.md)
+[中文](./README.md) | [English](./README_EN.md)
 
 VerbaAurea 是一个智能文档预处理工具，致力于将原始文档转化为"黄金"般的知识，为知识库构建提供高质量的文本数据。它专注于文档智能分割，确保语义完整性，为知识库检索和大语言模型微调提供优质素材。
 
-## 项目特点
+## ✨ 主要特性
 
-- **智能文档分割** - 基于句子边界和语义完整性进行精准分段,目前仅支持docx和doc格式的文档
-- **多维度评分系统** - 考虑标题、句子完整性、段落长度等多种因素决定最佳分割点
-- **语义完整性保护** - 优先保证句子和语义单元的完整，避免在句子中间断开
-- **可配置化设计** - 通过配置文件灵活调整分割策略，无需修改代码
-- **多语言支持** - 针对中英文文本采用不同的句子分割策略
-- **格式保留** - 保留原始文档的格式信息，包括样式、字体和表格
+- **🧠 智能文档分割** - 基于语义结构和句子边界的精准分段
+- **🔌 模块化架构** - 支持轻松扩展PDF、Excel、PowerPoint等格式
+- **🖼️ 完整图片保留** - 保持图片在原始位置，支持高质量图片处理
+- **📊 表格结构保护** - 完整复制表格结构和内容
+- **⚡ 高性能处理** - 支持并行处理和批量操作
+- **🌐 RESTful API** - 生产级API服务，支持远程调用和系统集成
+- **🖥️ 友好CLI界面** - 直观的命令行界面，支持交互式操作
+- **🐳 容器化部署** - 提供Docker支持，便于生产环境部署
+- **🔧 灵活配置** - 丰富的配置选项，支持多种处理策略
+
+## 🏗️ 架构设计
+
+VerbaAurea 采用分层模块化架构：
+
+```
+verba_aurea/
+├── core/                    # 核心业务逻辑层
+│   ├── processors/          # 文件处理器（插件化）
+│   ├── analyzers/          # 文本分析器
+│   ├── splitters/          # 分割策略
+│   └── models/             # 核心数据模型
+├── services/               # 服务层
+├── interfaces/             # 接口层
+│   ├── api/               # REST API
+│   └── cli/               # 命令行接口
+├── config/                # 统一配置管理
+└── tests/                 # 完整测试套件
+```
+
+### 🔌 插件化扩展
+
+```python
+# 轻松添加新格式支持
+from verba_aurea.core.processors import register_processor
+
+class PDFProcessor(BaseProcessor):
+    # 实现PDF处理逻辑
+    pass
+
+register_processor('.pdf', PDFProcessor)
+```
 
 ## 应用场景
 
@@ -22,21 +57,34 @@ VerbaAurea 是一个智能文档预处理工具，致力于将原始文档转化
 - **文档索引** - 优化文档检索系统的索引单元
 
 - **内容管理** - 改进内容管理系统中的文档组织方式
+- **API集成** - 通过RESTful API集成到现有系统和工作流中
 
-  
 ## 项目结构如下
 ```
-├── main.py                 # 主程序入口
+├── main.py                 # 主程序入口（命令行版本）
+├── start_api.py            # API服务启动脚本
 ├── config_manager.py       # 配置管理
 ├── document_processor.py   # 文档处理核心
 ├── text_analysis.py        # 文本分析功能
 ├── parallel_processor.py   # 并行处理实现
 ├── utils.py                # 工具函数
-├── config.json   # 自动生成的配置文件
-├── requirements.txt   # 项目所需库
-├── README.md   # 中文文档
-├── README_EN.md   # 英文文档
-├── LICENSE   # 开源许可证
+├── api/                    # API服务目录
+│   ├── main.py            # FastAPI应用入口
+│   ├── models/            # 数据模型
+│   ├── routers/           # API路由
+│   ├── services/          # 业务服务
+│   ├── utils/             # API工具函数
+│   ├── middleware/        # 中间件
+│   └── config/            # API配置
+├── config.json            # 自动生成的配置文件
+├── requirements.txt       # 命令行版本依赖
+├── requirements-api.txt   # API服务依赖
+├── Dockerfile             # Docker构建文件
+├── docker-compose.yml     # Docker Compose配置
+├── API_README.md          # API服务详细文档
+├── README.md              # 中文文档
+├── README_EN.md           # 英文文档
+├── LICENSE                # 开源许可证
 └── 文档或文档所在文件夹...
 ```
 
@@ -50,48 +98,180 @@ VerbaAurea 是一个智能文档预处理工具，致力于将原始文档转化
 - **自适应长度控制** - 根据配置自动调整文本片段长度
 - **格式保留处理** - 在分割的同时保留文档原始格式
 
-## 安装说明
+## 🚀 快速开始
 
 ### 环境要求
 
-- Python 3.6 或更高版本
+- Python 3.8 或更高版本
 - 支持 Windows、macOS 和 Linux 系统
-
-
 
 ### 安装步骤
 
-1. 克隆项目到本地
-
+1. **克隆项目**
 ```bash
 git clone https://github.com/yourusername/VerbaAurea.git
 cd VerbaAurea
 ```
 
-2. 安装依赖
+2. **安装依赖**
 
 ```bash
+# 安装命令行版本依赖
 pip install -r requirements.txt
+
+# 或安装API服务依赖
+pip install -r requirements-api.txt
 ```
 
-## 使用指南
+## 📖 使用指南
 
-### 基本用法
+VerbaAurea 提供三种使用方式：
 
-1. 将需要处理的Word文档放在脚本所在目录或子目录中
-2. 运行主脚本
+### 方式一：命令行工具
 
 ```bash
 python main.py
 ```
 
-1. 根据菜单选择操作:
-   - 选择 `1` 开始处理文档
-   - 选择 `2` 查看当前配置
-   - 选择 `3` 编辑配置
-   - 选择 `4` 退出程序
+### 方式二：API服务
 
-1. 处理后的文档将保存在`双碳输出`(默认)或自定义的输出文件夹中
+```bash
+# 启动API服务
+python start_api.py --host 0.0.0.0 --port 8000
+
+# 或使用Docker
+docker-compose up verba-aurea-api
+```
+
+### 方式三：Python库
+
+```python
+# 使用新架构（推荐）
+from verba_aurea.services import DocumentService
+from verba_aurea.config import get_settings
+
+settings = get_settings()
+service = DocumentService(settings)
+
+result = service.process_document(
+    input_file=Path("document.docx"),
+    config=settings.get_config()
+)
+
+print(f"处理完成，插入了 {result.split_count} 个分隔符")
+
+# 或使用传统方式（向后兼容）
+from document_processor import insert_split_markers
+from config_manager import load_config
+
+config = load_config()
+success = insert_split_markers("input.docx", "output.docx", config)
+
+# 生产环境（包含Nginx）
+docker-compose --profile production up -d
+```
+
+3. **访问API文档**
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+#### API使用示例
+
+**Python客户端示例：**
+```python
+import requests
+
+# 处理文档
+with open('document.docx', 'rb') as f:
+    files = {'file': f}
+    data = {'debug_mode': False}
+
+    response = requests.post(
+        'http://localhost:8000/api/v1/process-document',
+        files=files,
+        data=data
+    )
+
+    result = response.json()
+    print(f"处理成功，插入了 {result['data']['split_count']} 个分隔符")
+```
+
+**主要API端点：**
+- `POST /api/v1/process-document` - 处理文档并返回结果信息
+- `POST /api/v1/process-document/download` - 处理文档并直接下载
+- `GET /api/v1/health` - 健康检查
+- `GET /api/v1/config` - 获取配置
+- `PUT /api/v1/config` - 更新配置
+
+详细的API文档请参考：[API_README.md](./API_README.md)
+
+## 🧪 测试
+
+VerbaAurea 提供完整的测试套件，确保功能的可靠性和稳定性。
+
+### 测试结构
+
+```
+verba_aurea/tests/
+├── api/                     # API测试
+│   └── test_api_endpoints.py
+├── functional/              # 功能测试
+│   └── test_image_processing.py
+├── unit/                    # 单元测试
+└── integration/             # 集成测试
+```
+
+### 运行测试
+
+#### 使用统一测试运行器（推荐）
+
+```bash
+# 运行所有测试
+python run_tests.py
+
+# 运行特定类型的测试
+python run_tests.py --type api          # API测试
+python run_tests.py --type functional   # 功能测试
+python run_tests.py --type unit         # 单元测试
+python run_tests.py --type integration  # 集成测试
+
+# 检查测试依赖
+python run_tests.py --check-deps
+```
+
+#### 单独运行测试
+
+```bash
+# API测试（需要先启动API服务）
+python start_api.py  # 在另一个终端启动
+python verba_aurea/tests/api/test_api_endpoints.py
+
+# 功能测试
+python verba_aurea/tests/functional/test_image_processing.py
+
+# 使用pytest运行（需要安装pytest）
+pytest verba_aurea/tests/unit/ -v
+pytest verba_aurea/tests/integration/ -v
+```
+
+### 测试覆盖
+
+- **API端点测试** - 验证所有API端点的功能和响应
+- **图片处理测试** - 验证图片识别、保留和质量保持
+- **文档分析测试** - 验证文档结构分析和元素提取
+- **配置管理测试** - 验证配置加载、验证和更新
+- **错误处理测试** - 验证各种错误情况的处理
+- **性能测试** - 验证处理速度和资源使用
+
+### 测试报告
+
+测试完成后会生成详细的测试报告，包括：
+- 测试通过率
+- 性能指标
+- 错误详情
+- 改进建议
+
+查看历史测试报告：[docs/API_TEST_REPORT.md](./docs/API_TEST_REPORT.md)
 
 ### 配置说明
 
@@ -140,9 +320,13 @@ python main.py
 
 ## 开发计划
 
--  添加对更多文档格式的支持
--  实现图形用户界面
--  增强语义分析能力，使用更先进的NLP模型
+- ✅ RESTful API服务
+- ✅ Docker容器化部署
+- 🔄 添加对更多文档格式的支持（PDF、TXT等）
+- 🔄 实现图形用户界面
+- 🔄 增强语义分析能力，使用更先进的NLP模型
+- 🔄 支持批量文档处理API
+- 🔄 添加文档处理队列和异步处理
 
 ## 常见问题
 
@@ -157,6 +341,14 @@ A: 提高 `sentence_integrity_weight` 参数值，默认值为 8.0，可以尝�
 **Q: 如何处理特殊格式的文档？**
 
 A: 对于特殊格式，可以通过调整高级设置中的评分参数来适应不同的文档结构。
+
+**Q: API服务和命令行工具有什么区别？**
+
+A: API服务提供RESTful接口，支持远程调用和系统集成，适合生产环境；命令行工具适合本地批量处理和开发测试。
+
+**Q: 如何在生产环境中部署API服务？**
+
+A: 推荐使用Docker部署，运行 `docker-compose --profile production up -d` 即可启动包含Nginx反向代理的完整服务。
 
 ## 贡献指南
 

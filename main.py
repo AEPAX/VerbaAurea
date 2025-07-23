@@ -39,6 +39,14 @@ except ImportError:
     from rich.style import Style
     from rich.align import Align
 
+# 尝试使用新架构，如果不可用则使用传统模块
+try:
+    from verba_aurea.services import DocumentService, ProcessingService
+    from verba_aurea.config import get_settings
+    USE_NEW_ARCHITECTURE = True
+except ImportError:
+    USE_NEW_ARCHITECTURE = False
+
 # 导入项目模块
 from config_manager import load_config, show_config, edit_config, save_config
 from parallel_processor import process_all_documents

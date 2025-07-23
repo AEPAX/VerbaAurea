@@ -1,6 +1,6 @@
 # 📚 VerbaAurea 🌟
 
-中文 [中文](./README.md) | 英文 [English](./README_EN.md)
+[中文](./README.md) | [English](./README_EN.md)
 
 VerbaAurea is an intelligent document preprocessing tool dedicated to transforming raw documents into "golden" knowledge, providing high-quality text data for knowledge base construction. It focuses on intelligent document segmentation, ensuring semantic integrity, and delivers premium material for knowledge base retrieval and large language model fine-tuning.
 
@@ -143,6 +143,74 @@ You can customize segmentation parameters by editing through the menu or directl
 - Add support for more document formats
 - Implement a graphical user interface
 - Enhance semantic analysis capabilities using more advanced NLP models
+
+## 🧪 Testing
+
+VerbaAurea provides a comprehensive test suite to ensure functionality reliability and stability.
+
+### Test Structure
+
+```
+verba_aurea/tests/
+├── api/                     # API tests
+│   └── test_api_endpoints.py
+├── functional/              # Functional tests
+│   └── test_image_processing.py
+├── unit/                    # Unit tests
+└── integration/             # Integration tests
+```
+
+### Running Tests
+
+#### Using Unified Test Runner (Recommended)
+
+```bash
+# Run all tests
+python run_tests.py
+
+# Run specific type of tests
+python run_tests.py --type api          # API tests
+python run_tests.py --type functional   # Functional tests
+python run_tests.py --type unit         # Unit tests
+python run_tests.py --type integration  # Integration tests
+
+# Check test dependencies
+python run_tests.py --check-deps
+```
+
+#### Running Tests Individually
+
+```bash
+# API tests (requires API service to be started first)
+python start_api.py  # Start in another terminal
+python verba_aurea/tests/api/test_api_endpoints.py
+
+# Functional tests
+python verba_aurea/tests/functional/test_image_processing.py
+
+# Using pytest (requires pytest installation)
+pytest verba_aurea/tests/unit/ -v
+pytest verba_aurea/tests/integration/ -v
+```
+
+### Test Coverage
+
+- **API Endpoint Tests** - Verify functionality and responses of all API endpoints
+- **Image Processing Tests** - Verify image recognition, preservation, and quality maintenance
+- **Document Analysis Tests** - Verify document structure analysis and element extraction
+- **Configuration Management Tests** - Verify configuration loading, validation, and updates
+- **Error Handling Tests** - Verify handling of various error conditions
+- **Performance Tests** - Verify processing speed and resource usage
+
+### Test Reports
+
+After testing completion, detailed test reports are generated, including:
+- Test pass rate
+- Performance metrics
+- Error details
+- Improvement suggestions
+
+View historical test reports: [docs/API_TEST_REPORT.md](./docs/API_TEST_REPORT.md)
 
 ## Frequently Asked Questions
 

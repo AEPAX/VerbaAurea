@@ -2,8 +2,6 @@ import os
 import json
 import sys
 
-from traits.trait_types import true
-
 DEFAULT_CONFIG = {
     "document_settings": {
         "max_length": 1000,
@@ -23,7 +21,7 @@ DEFAULT_CONFIG = {
         "length_score_factor": 100,
         "search_window": 5,
         "heading_after_penalty": 12,
-        "force_split_before_heading": true
+        "force_split_before_heading": True
     }
 }
 
