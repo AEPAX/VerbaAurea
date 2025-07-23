@@ -64,7 +64,7 @@ VerbaAurea is an intelligent document preprocessing tool dedicated to transformi
 1. Clone the project locally
 
 ```bash
-git clone https://github.com/yourusername/VerbaAurea.git
+git clone https://github.com/AEPAX/VerbaAurea.git
 cd VerbaAurea
 ```
 
