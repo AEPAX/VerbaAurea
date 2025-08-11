@@ -1,1 +1,0 @@
-# VerbaAurea API Package

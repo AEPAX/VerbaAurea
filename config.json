@@ -1,31 +1,31 @@
 {
+  "advanced_settings": {
+    "force_split_before_heading": true,
+    "heading_after_penalty": 12,
+    "heading_score_bonus": 10,
+    "length_score_factor": 100,
+    "min_split_score": 7,
+    "search_window": 5,
+    "sentence_end_score_bonus": 6
+  },
   "document_settings": {
-  "max_length": 5000,
-  "min_length": 1000,
-  "sentence_integrity_weight": 8.0,
-  "table_length_factor": 1.2,
-  "image_length_factor": 100,
-  "preserve_images": true
+    "image_length_factor": 100,
+    "max_length": 1500,
+    "min_length": 200,
+    "preserve_images": true,
+    "sentence_integrity_weight": 8.0,
+    "table_length_factor": 1.2
+  },
+  "input_folder": ".",
+  "performance_settings": {
+    "batch_size": 3,
+    "cache_size": 1024,
+    "num_workers": 0,
+    "parallel_processing": true
   },
   "processing_options": {
     "debug_mode": false,
     "output_folder": "文件输出",
     "skip_existing": true
-  },
-  "advanced_settings": {
-    "min_split_score": 7,
-    "heading_score_bonus": 10,
-    "sentence_end_score_bonus": 6,
-    "length_score_factor": 100,
-    "search_window": 5,
-    "heading_after_penalty": 12,
-    "force_split_before_heading": true
-  },
-  "performance_settings": {
-    "parallel_processing": true,
-    "num_workers": 0,
-    "cache_size": 1024,
-    "batch_size": 3
-  },
-  "input_folder": "."
+  }
 }

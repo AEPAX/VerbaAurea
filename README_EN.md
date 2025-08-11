@@ -1,15 +1,17 @@
 # 📚 VerbaAurea 🌟
 
-[中文](./README.md) | [English](./README_EN.md)
+中文 [中文](./README.md) | 英文 [English](./README_EN.md)
 
 VerbaAurea is an intelligent document preprocessing tool dedicated to transforming raw documents into "golden" knowledge, providing high-quality text data for knowledge base construction. It focuses on intelligent document segmentation, ensuring semantic integrity, and delivers premium material for knowledge base retrieval and large language model fine-tuning.
 
 ## Project Features
 
-- **Intelligent Document Segmentation** - Precise segmentation based on sentence boundaries and semantic integrity, currently supporting only docx and doc format documents
+- **Intelligent Document Segmentation** - Precise segmentation based on sentence boundaries and semantic integrity, supporting DOCX format documents
 - **Multi-dimensional Scoring System** - Considers titles, sentence integrity, paragraph length, and other factors to determine optimal split points
 - **Semantic Integrity Protection** - Prioritizes the completeness of sentences and semantic units, avoiding breaks in the middle of sentences
-- **Configurable Design** - Flexibly adjust segmentation strategies through configuration files without modifying code
+- **Web Interface Support** - Provides modern web interface with drag-and-drop upload and batch processing
+- **Batch Processing Capability** - Supports processing multiple documents simultaneously with unified download
+- **Configurable Design** - Flexibly adjust segmentation strategies through configuration files or web interface
 - **Multi-language Support** - Employs different sentence segmentation strategies for Chinese and English texts
 - **Format Preservation** - Maintains the original document's formatting information, including styles, fonts, and tables
 
@@ -24,52 +26,29 @@ VerbaAurea is an intelligent document preprocessing tool dedicated to transformi
 - **Content Management** - Improves document organization in content management systems
 
   
-## 🏗️ Project Architecture
-
-VerbaAurea adopts a modern layered modular architecture:
+## Project Structure
 
 ```
-├── main.py                 # Main program entry (using new architecture CLI)
-├── start_api.py            # API service startup script
-├── verba_aurea/            # New architecture core module
-│   ├── core/              # Core business logic
-│   │   ├── analyzers/     # Document analyzers
-│   │   ├── models/        # Data models
-│   │   ├── processors/    # Document processors
-│   │   └── splitters/     # Document splitters
-│   ├── services/          # Service layer
-│   │   ├── document_service.py    # Document service
-│   │   └── processing_service.py  # Processing service
-│   ├── interfaces/        # Interface layer
-│   │   ├── api/          # API interface adapter
-│   │   └── cli/          # Command line interface
-│   ├── config/           # Configuration management
-│   │   ├── settings.py   # Configuration settings
-│   │   └── manager.py    # Configuration manager
-│   ├── tests/            # Test suite
-│   │   ├── api/         # API tests
-│   │   ├── functional/  # Functional tests
-│   │   ├── unit/        # Unit tests
-│   │   └── integration/ # Integration tests
-│   └── legacy_adapter.py # Backward compatibility adapter
-├── api/                   # API service directory (compatibility layer)
-│   ├── main.py           # FastAPI application entry
-│   ├── models/           # Data models
-│   ├── routers/          # API routes
-│   ├── services/         # Business services
-│   ├── utils/            # API utilities
-│   ├── middleware/       # Middleware
-│   └── config/           # API configuration
-├── config.json           # Configuration file
-├── requirements.txt      # Basic dependencies
-├── requirements-api.txt  # API service dependencies
-├── Dockerfile            # Docker build file
-├── docker-compose.yml    # Docker Compose configuration
-├── API_README.md         # API service detailed documentation
-├── README.md             # Chinese documentation
-├── README_EN.md          # English documentation
-├── LICENSE               # Open source license
-└── 企业库/               # Sample document directory
+├── main.py                 # Command-line main program
+├── web_service.py          # Web service main program
+├── config_manager.py       # Configuration management
+├── document_processor.py   # Document processing core
+├── text_analysis.py        # Text analysis functionality
+├── parallel_processor.py   # Parallel processing implementation
+├── utils.py                # Utility functions
+├── config.json            # Configuration file
+├── requirements.txt       # Project dependencies
+├── templates/             # Web interface templates
+│   └── index.html         # Main page template
+├── static/                # Static resources
+│   ├── style.css          # Stylesheet
+│   └── script.js          # Frontend scripts
+├── uploads/               # Upload temporary directory
+├── processed/             # Processing results directory
+├── README.md              # Chinese documentation
+├── README_EN.md           # English documentation
+├── LICENSE                # Open source license
+└── 启动Web服务.bat        # Windows quick start script
 ```
 
 
@@ -108,7 +87,27 @@ pip install -r requirements.txt
 
 ## User Guide
 
-### Basic Usage
+### Web Interface Usage (Recommended)
+
+1. Start the web service
+
+```bash
+python web_service.py
+```
+
+Or double-click the `启动Web服务.bat` file on Windows systems
+
+2. Open your browser and visit `http://localhost:18080`
+
+3. Use the web interface for document processing:
+   - **Upload Files**: Drag DOCX files to the upload area or click to select files
+   - **Batch Processing**: Support uploading multiple files simultaneously
+   - **File Management**: Preview uploaded files and remove unwanted files
+   - **Start Processing**: Click "Start Processing" button to process all files
+   - **Real-time Progress**: View processing progress and status
+   - **Download Results**: Download ZIP package after processing completion
+
+### Command Line Usage
 
 1. Place Word documents that need processing in the script directory or subdirectories
 2. Run the main script
@@ -123,7 +122,7 @@ python main.py
    - Select `3` to edit configuration
    - Select `4` to exit the program
 
-4. Processed documents will be saved in the `文件输出` (default) or custom output folder
+4. Processed documents will be saved in the `processed` (default) or custom output folder
 
 ### Configuration Instructions
 
@@ -170,79 +169,24 @@ You can customize segmentation parameters by editing through the menu or directl
 6. **Split Marker Insertion** - Insert `<!--split-->` markers at selected positions
 7. **Format Preservation** - Preserve the original document's formatting and save as a new document
 
+## Web Interface Features
+
+- **Modern Interface** - Responsive design supporting desktop and mobile devices
+- **Drag & Drop Upload** - Support dragging files to upload area
+- **Batch Processing** - Process multiple documents at once for improved efficiency
+- **Real-time Progress** - Display processing progress and current file
+- **File Management** - Preview and manage file list after upload
+- **Configuration Adjustment** - Online adjustment of processing parameters
+- **Result Download** - Unified packaging and download after processing completion
+
 ## Development Plan
 
-- Add support for more document formats
-- Implement a graphical user interface
-- Enhance semantic analysis capabilities using more advanced NLP models
-
-## 🧪 Testing
-
-VerbaAurea provides a comprehensive test suite to ensure functionality reliability and stability.
-
-### Test Structure
-
-```
-verba_aurea/tests/
-├── api/                     # API tests
-│   └── test_api_endpoints.py
-├── functional/              # Functional tests
-│   └── test_image_processing.py
-├── unit/                    # Unit tests
-└── integration/             # Integration tests
-```
-
-### Running Tests
-
-#### Using Unified Test Runner (Recommended)
-
-```bash
-# Run all tests
-python run_tests.py
-
-# Run specific type of tests
-python run_tests.py --type api          # API tests
-python run_tests.py --type functional   # Functional tests
-python run_tests.py --type unit         # Unit tests
-python run_tests.py --type integration  # Integration tests
-
-# Check test dependencies
-python run_tests.py --check-deps
-```
-
-#### Running Tests Individually
-
-```bash
-# API tests (requires API service to be started first)
-python start_api.py  # Start in another terminal
-python verba_aurea/tests/api/test_api_endpoints.py
-
-# Functional tests
-python verba_aurea/tests/functional/test_image_processing.py
-
-# Using pytest (requires pytest installation)
-pytest verba_aurea/tests/unit/ -v
-pytest verba_aurea/tests/integration/ -v
-```
-
-### Test Coverage
-
-- **API Endpoint Tests** - Verify functionality and responses of all API endpoints
-- **Image Processing Tests** - Verify image recognition, preservation, and quality maintenance
-- **Document Analysis Tests** - Verify document structure analysis and element extraction
-- **Configuration Management Tests** - Verify configuration loading, validation, and updates
-- **Error Handling Tests** - Verify handling of various error conditions
-- **Performance Tests** - Verify processing speed and resource usage
-
-### Test Reports
-
-After testing completion, detailed test reports are generated, including:
-- Test pass rate
-- Performance metrics
-- Error details
-- Improvement suggestions
-
-View historical test reports: [docs/API_TEST_REPORT.md](./docs/API_TEST_REPORT.md)
+- ✅ Web interface support
+- ✅ Batch document processing
+- ✅ Drag & drop upload functionality
+- 🔄 Add support for more document formats
+- 🔄 Enhance semantic analysis capabilities using more advanced NLP models
+- 🔄 Add document preview functionality
 
 ## Frequently Asked Questions
 
@@ -257,6 +201,89 @@ A: Increase the `sentence_integrity_weight` parameter value; the default value i
 **Q: How to handle documents with special formatting?**
 
 A: For special formats, you can adapt to different document structures by adjusting the scoring parameters in the advanced settings.
+
+## API Endpoints
+
+Below are the main API endpoints. All return JSON (except the download endpoint):
+
+- Health Check
+  - Method: GET
+  - Path: /api/health
+  - Example:
+    ```bash
+    curl -s http://localhost:18080/api/health
+    ```
+
+- Get/Update Configuration
+  - Method: GET / POST
+  - Path: /api/config
+  - Example (get config):
+    ```bash
+    curl -s http://localhost:18080/api/config
+    ```
+  - Example (update config):
+    ```bash
+    curl -s -X POST http://localhost:18080/api/config \
+      -H "Content-Type: application/json" \
+      -d '{"document_settings": {"max_length": 1200, "min_length": 200}}'
+    ```
+
+- Upload File (upload only, no immediate processing)
+  - Method: POST (multipart/form-data)
+  - Path: /api/upload
+  - Params: file (required), session_id (optional, auto-created if omitted)
+  - Returns: { success, session_id, file_id, original_filename, file_size, message }
+  - Example:
+    ```bash
+    curl -s -F "file=@/path/to/file.docx" http://localhost:18080/api/upload
+    ```
+
+- Start Batch Processing
+  - Method: POST (application/json)
+  - Path: /api/batch/process
+  - Body: { "session_id": "<SESSION_ID>" }
+  - Returns: { success, session_id, processed_count, failed_count, download_url, message }
+  - Example:
+    ```bash
+    curl -s -X POST http://localhost:18080/api/batch/process \
+      -H "Content-Type: application/json" \
+      -d '{"session_id": "<SESSION_ID>"}'
+    ```
+
+- Get Batch Status
+  - Method: GET
+  - Path: /api/batch/status/<session_id>
+  - Returns: { status, progress, processed_count, total_count, current_file, files[], download_url }
+  - Example:
+    ```bash
+    curl -s http://localhost:18080/api/batch/status/<SESSION_ID>
+    ```
+
+- Batch Result Download (ZIP)
+  - Method: GET
+  - Path: /api/batch/download/<session_id>
+  - Returns: ZIP file (Content-Disposition attachment)
+  - Example:
+    ```bash
+    curl -L -o result.zip http://localhost:18080/api/batch/download/<SESSION_ID>
+    ```
+
+- Remove File From Batch
+  - Method: POST (application/json)
+  - Path: /api/batch/remove-file
+  - Body: { "session_id": "<SESSION_ID>", "file_id": "<FILE_ID>" }
+  - Returns: { success, message }
+  - Example:
+    ```bash
+    curl -s -X POST http://localhost:18080/api/batch/remove-file \
+      -H "Content-Type: application/json" \
+      -d '{"session_id": "<SESSION_ID>", "file_id": "<FILE_ID>"}'
+    ```
+
+- Single File Download (legacy compatibility)
+  - Method: GET
+  - Path: /api/download/<file_id>
+  - Note: Kept only for legacy compatibility; the new flow uses batch download
 
 ## Contribution Guidelines
 

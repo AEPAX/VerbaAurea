@@ -1,0 +1,30 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <value>
+          <list size="17">
+            <item index="0" class="java.lang.String" itemvalue="huggingface_hub" />
+            <item index="1" class="java.lang.String" itemvalue="win32gui" />
+            <item index="2" class="java.lang.String" itemvalue="bs4" />
+            <item index="3" class="java.lang.String" itemvalue="python_docx" />
+            <item index="4" class="java.lang.String" itemvalue="binance-futures-connector" />
+            <item index="5" class="java.lang.String" itemvalue="fonttools" />
+            <item index="6" class="java.lang.String" itemvalue="dotenv" />
+            <item index="7" class="java.lang.String" itemvalue="matplotlib" />
+            <item index="8" class="java.lang.String" itemvalue="charset-normalizer" />
+            <item index="9" class="java.lang.String" itemvalue="kiwisolver" />
+            <item index="10" class="java.lang.String" itemvalue="cycler" />
+            <item index="11" class="java.lang.String" itemvalue="numpy" />
+            <item index="12" class="java.lang.String" itemvalue="pycryptodome" />
+            <item index="13" class="java.lang.String" itemvalue="websocket-client" />
+            <item index="14" class="java.lang.String" itemvalue="contourpy" />
+            <item index="15" class="java.lang.String" itemvalue="pandas" />
+            <item index="16" class="java.lang.String" itemvalue="Requests" />
+          </list>
+        </value>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VerbaAurea - 文档处理Web服务</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <div class="logo">
+                <h1>🏛️ VerbaAurea</h1>
+                <p class="tagline">文字的炼金术，知识的黄金</p>
+            </div>
+            <div class="version">v1.0.0 Web版</div>
+        </header>
+
+        <!-- 主要内容区域 -->
+        <main class="main-content">
+            <!-- 文件上传区域 -->
+            <section class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📄</div>
+                    <h3>拖拽DOCX文件到此处</h3>
+                    <p>或者 <button class="browse-btn" id="browseBtn">选择文件</button></p>
+                    <input type="file" id="fileInput" accept=".docx" multiple style="display: none;">
+                    <div class="file-info">
+                        <small>支持格式：.docx | 最大文件大小：50MB | 支持多文件选择</small>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 已上传文件列表区域 -->
+            <section class="uploaded-files-section" id="uploadedFilesSection" style="display: none;">
+                <div class="uploaded-files-card">
+                    <div class="uploaded-files-header">
+                        <h3>📋 已上传文件</h3>
+                        <div class="uploaded-files-actions">
+                            <button class="process-btn" id="processBtn" disabled>🚀 开始处理</button>
+                            <button class="clear-btn" id="clearBtn">🗑️ 清空列表</button>
+                        </div>
+                    </div>
+                    <div class="uploaded-files-list" id="uploadedFilesList">
+                        <div class="no-files" id="noUploadedFiles">
+                            <p>暂无已上传文件</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 处理状态区域 -->
+            <section class="status-section" id="statusSection" style="display: none;">
+                <div class="status-card">
+                    <h3>📊 批量处理状态</h3>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">0%</div>
+                    </div>
+                    <div class="status-info">
+                        <div class="status-item">
+                            <span class="label">当前文件：</span>
+                            <span id="currentFileName">-</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">进度：</span>
+                            <span id="processProgress">0/0</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">状态：</span>
+                            <span id="processStatus" class="status-badge">等待中</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="label">开始时间：</span>
+                            <span id="startTime">-</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 结果区域 -->
+            <section class="result-section" id="resultSection" style="display: none;">
+                <div class="result-card success" id="successCard" style="display: none;">
+                    <h3>✅ 批量处理完成</h3>
+                    <div class="result-summary" id="resultSummary">
+                        <p>处理结果统计</p>
+                    </div>
+                    <div class="download-area">
+                        <button class="download-btn" id="downloadBtn">
+                            <span class="btn-icon">⬇️</span>
+                            下载处理结果压缩包
+                        </button>
+                    </div>
+                    <button class="reset-btn" onclick="resetBatch()">处理新批次</button>
+                </div>
+
+                <div class="result-card error" id="errorCard" style="display: none;">
+                    <h3>❌ 批量处理失败</h3>
+                    <p id="errorMessage">处理过程中发生错误</p>
+                    <button class="reset-btn" onclick="resetBatch()">重新尝试</button>
+                </div>
+            </section>
+
+
+
+            <!-- 配置区域 -->
+            <section class="config-section">
+                <details class="config-details">
+                    <summary>⚙️ 高级配置</summary>
+                    <div class="config-content">
+                        <div class="config-grid">
+                            <div class="config-item">
+                                <label for="maxLength">最大长度：</label>
+                                <input type="number" id="maxLength" value="1000" min="100" max="5000">
+                            </div>
+                            <div class="config-item">
+                                <label for="minLength">最小长度：</label>
+                                <input type="number" id="minLength" value="300" min="50" max="1000">
+                            </div>
+                            <div class="config-item">
+                                <label for="sentenceWeight">句子完整性权重：</label>
+                                <input type="number" id="sentenceWeight" value="8.0" min="1" max="20" step="0.1">
+                            </div>
+                            <div class="config-item">
+                                <label for="preserveImages">保留图片：</label>
+                                <input type="checkbox" id="preserveImages" checked>
+                            </div>
+                        </div>
+                        <div class="config-actions">
+                            <button class="config-btn" onclick="loadConfig()">加载当前配置</button>
+                            <button class="config-btn primary" onclick="saveConfig()">保存配置</button>
+                        </div>
+                    </div>
+                </details>
+            </section>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="footer">
+            <p>&copy; 2024 VerbaAurea - 专注于为知识库构建提供高质量的文本数据</p>
+        </footer>
+    </div>
+
+    <!-- 消息提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

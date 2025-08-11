@@ -1,52 +1,19 @@
 # 📚 VerbaAurea 🌟
 
-[中文](./README.md) | [English](./README_EN.md)
+中文 [中文](./README.md) | 英文 [English](./README_EN.md)
 
 VerbaAurea 是一个智能文档预处理工具，致力于将原始文档转化为"黄金"般的知识，为知识库构建提供高质量的文本数据。它专注于文档智能分割，确保语义完整性，为知识库检索和大语言模型微调提供优质素材。
 
-## ✨ 主要特性
+## 项目特点
 
-- **🧠 智能文档分割** - 基于语义结构和句子边界的精准分段
-- **🔌 模块化架构** - 支持轻松扩展PDF、Excel、PowerPoint等格式
-- **🖼️ 完整图片保留** - 保持图片在原始位置，支持高质量图片处理
-- **📊 表格结构保护** - 完整复制表格结构和内容
-- **⚡ 高性能处理** - 支持并行处理和批量操作
-- **🌐 RESTful API** - 生产级API服务，支持远程调用和系统集成
-- **🖥️ 友好CLI界面** - 直观的命令行界面，支持交互式操作
-- **🐳 容器化部署** - 提供Docker支持，便于生产环境部署
-- **🔧 灵活配置** - 丰富的配置选项，支持多种处理策略
-
-## 🏗️ 架构设计
-
-VerbaAurea 采用分层模块化架构：
-
-```
-verba_aurea/
-├── core/                    # 核心业务逻辑层
-│   ├── processors/          # 文件处理器（插件化）
-│   ├── analyzers/          # 文本分析器
-│   ├── splitters/          # 分割策略
-│   └── models/             # 核心数据模型
-├── services/               # 服务层
-├── interfaces/             # 接口层
-│   ├── api/               # REST API
-│   └── cli/               # 命令行接口
-├── config/                # 统一配置管理
-└── tests/                 # 完整测试套件
-```
-
-### 🔌 插件化扩展
-
-```python
-# 轻松添加新格式支持
-from verba_aurea.core.processors import register_processor
-
-class PDFProcessor(BaseProcessor):
-    # 实现PDF处理逻辑
-    pass
-
-register_processor('.pdf', PDFProcessor)
-```
+- **智能文档分割** - 基于句子边界和语义完整性进行精准分段，支持DOCX格式文档
+- **多维度评分系统** - 考虑标题、句子完整性、段落长度等多种因素决定最佳分割点
+- **语义完整性保护** - 优先保证句子和语义单元的完整，避免在句子中间断开
+- **Web界面支持** - 提供现代化的Web界面，支持拖拽上传和批量处理
+- **批量处理能力** - 支持同时处理多个文档，统一打包下载处理结果
+- **可配置化设计** - 通过配置文件或Web界面灵活调整分割策略
+- **多语言支持** - 针对中英文文本采用不同的句子分割策略
+- **格式保留** - 保留原始文档的格式信息，包括样式、字体和表格
 
 ## 应用场景
 
@@ -57,54 +24,31 @@ register_processor('.pdf', PDFProcessor)
 - **文档索引** - 优化文档检索系统的索引单元
 
 - **内容管理** - 改进内容管理系统中的文档组织方式
-- **API集成** - 通过RESTful API集成到现有系统和工作流中
 
-## 🏗️ 项目架构
-
-VerbaAurea 采用现代化的分层模块化架构：
+  
+## 项目结构
 
 ```
-├── main.py                 # 主程序入口（使用新架构CLI）
-├── start_api.py            # API服务启动脚本
-├── verba_aurea/            # 新架构核心模块
-│   ├── core/              # 核心业务逻辑
-│   │   ├── analyzers/     # 文档分析器
-│   │   ├── models/        # 数据模型
-│   │   ├── processors/    # 文档处理器
-│   │   └── splitters/     # 文档分割器
-│   ├── services/          # 服务层
-│   │   ├── document_service.py    # 文档服务
-│   │   └── processing_service.py  # 处理服务
-│   ├── interfaces/        # 接口层
-│   │   ├── api/          # API接口适配器
-│   │   └── cli/          # 命令行接口
-│   ├── config/           # 配置管理
-│   │   ├── settings.py   # 配置设置
-│   │   └── manager.py    # 配置管理器
-│   ├── tests/            # 测试套件
-│   │   ├── api/         # API测试
-│   │   ├── functional/  # 功能测试
-│   │   ├── unit/        # 单元测试
-│   │   └── integration/ # 集成测试
-│   └── legacy_adapter.py # 向后兼容适配器
-├── api/                   # API服务目录（兼容层）
-│   ├── main.py           # FastAPI应用入口
-│   ├── models/           # 数据模型
-│   ├── routers/          # API路由
-│   ├── services/         # 业务服务
-│   ├── utils/            # API工具函数
-│   ├── middleware/       # 中间件
-│   └── config/           # API配置
-├── config.json           # 配置文件
-├── requirements.txt      # 基础依赖
-├── requirements-api.txt  # API服务依赖
-├── Dockerfile            # Docker构建文件
-├── docker-compose.yml    # Docker Compose配置
-├── API_README.md         # API服务详细文档
-├── README.md             # 中文文档
-├── README_EN.md          # 英文文档
-├── LICENSE               # 开源许可证
-└── 企业库/               # 示例文档目录
+├── main.py                 # 命令行主程序入口
+├── web_service.py          # Web服务主程序
+├── config_manager.py       # 配置管理
+├── document_processor.py   # 文档处理核心
+├── text_analysis.py        # 文本分析功能
+├── parallel_processor.py   # 并行处理实现
+├── utils.py                # 工具函数
+├── config.json            # 配置文件
+├── requirements.txt       # 项目依赖
+├── templates/             # Web界面模板
+│   └── index.html         # 主页面模板
+├── static/                # 静态资源
+│   ├── style.css          # 样式文件
+│   └── script.js          # 前端脚本
+├── uploads/               # 上传文件临时目录
+├── processed/             # 处理结果目录
+├── README.md              # 中文文档
+├── README_EN.md           # 英文文档
+├── LICENSE                # 开源许可证
+└── 启动Web服务.bat        # Windows快速启动脚本
 ```
 
 
@@ -117,180 +61,68 @@ VerbaAurea 采用现代化的分层模块化架构：
 - **自适应长度控制** - 根据配置自动调整文本片段长度
 - **格式保留处理** - 在分割的同时保留文档原始格式
 
-## 🚀 快速开始
+## 安装说明
 
 ### 环境要求
 
-- Python 3.8 或更高版本
+- Python 3.6 或更高版本
 - 支持 Windows、macOS 和 Linux 系统
+
+
 
 ### 安装步骤
 
-1. **克隆项目**
+1. 克隆项目到本地
+
 ```bash
 git clone https://github.com/yourusername/VerbaAurea.git
 cd VerbaAurea
 ```
 
-2. **安装依赖**
+2. 安装依赖
 
 ```bash
-# 安装命令行版本依赖
 pip install -r requirements.txt
-
-# 或安装API服务依赖
-pip install -r requirements-api.txt
 ```
 
-## 📖 使用指南
+## 使用指南
 
-VerbaAurea 提供三种使用方式：
+### Web界面使用（推荐）
 
-### 方式一：命令行工具
+1. 启动Web服务
+
+```bash
+python web_service.py
+```
+
+或在Windows系统中双击 `启动Web服务.bat` 文件
+
+2. 打开浏览器访问 `http://localhost:18080`
+
+3. 使用Web界面进行文档处理：
+   - **上传文件**：拖拽DOCX文件到上传区域或点击选择文件
+   - **批量处理**：支持同时上传多个文件
+   - **文件管理**：可以预览已上传文件，移除不需要的文件
+   - **开始处理**：点击"开始处理"按钮统一处理所有文件
+   - **实时进度**：查看处理进度和状态
+   - **下载结果**：处理完成后下载ZIP压缩包
+
+### 命令行使用
+
+1. 将需要处理的Word文档放在脚本所在目录或子目录中
+2. 运行主脚本
 
 ```bash
 python main.py
 ```
 
-### 方式二：API服务
+3. 根据菜单选择操作:
+   - 选择 `1` 开始处理文档
+   - 选择 `2` 查看当前配置
+   - 选择 `3` 编辑配置
+   - 选择 `4` 退出程序
 
-```bash
-# 启动API服务
-python start_api.py --host 0.0.0.0 --port 8000
-
-# 或使用Docker
-docker-compose up verba-aurea-api
-```
-
-### 方式三：Python库
-
-```python
-# 使用新架构（推荐）
-from verba_aurea.services import DocumentService
-from verba_aurea.config import get_settings
-
-settings = get_settings()
-service = DocumentService(settings)
-
-result = service.process_document(
-    input_file=Path("document.docx"),
-    config=settings.get_config()
-)
-
-print(f"处理完成，插入了 {result.split_count} 个分隔符")
-
-# 或使用传统方式（向后兼容）
-from document_processor import insert_split_markers
-from config_manager import load_config
-
-config = load_config()
-success = insert_split_markers("input.docx", "output.docx", config)
-
-# 生产环境（包含Nginx）
-docker-compose --profile production up -d
-```
-
-3. **访问API文档**
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-#### API使用示例
-
-**Python客户端示例：**
-```python
-import requests
-
-# 处理文档
-with open('document.docx', 'rb') as f:
-    files = {'file': f}
-    data = {'debug_mode': False}
-
-    response = requests.post(
-        'http://localhost:8000/api/v1/process-document',
-        files=files,
-        data=data
-    )
-
-    result = response.json()
-    print(f"处理成功，插入了 {result['data']['split_count']} 个分隔符")
-```
-
-**主要API端点：**
-- `POST /api/v1/process-document` - 处理文档并返回结果信息
-- `POST /api/v1/process-document/download` - 处理文档并直接下载
-- `GET /api/v1/health` - 健康检查
-- `GET /api/v1/config` - 获取配置
-- `PUT /api/v1/config` - 更新配置
-
-详细的API文档请参考：[API_README.md](./API_README.md)
-
-## 🧪 测试
-
-VerbaAurea 提供完整的测试套件，确保功能的可靠性和稳定性。
-
-### 测试结构
-
-```
-verba_aurea/tests/
-├── api/                     # API测试
-│   └── test_api_endpoints.py
-├── functional/              # 功能测试
-│   └── test_image_processing.py
-├── unit/                    # 单元测试
-└── integration/             # 集成测试
-```
-
-### 运行测试
-
-#### 使用统一测试运行器（推荐）
-
-```bash
-# 运行所有测试
-python run_tests.py
-
-# 运行特定类型的测试
-python run_tests.py --type api          # API测试
-python run_tests.py --type functional   # 功能测试
-python run_tests.py --type unit         # 单元测试
-python run_tests.py --type integration  # 集成测试
-
-# 检查测试依赖
-python run_tests.py --check-deps
-```
-
-#### 单独运行测试
-
-```bash
-# API测试（需要先启动API服务）
-python start_api.py  # 在另一个终端启动
-python verba_aurea/tests/api/test_api_endpoints.py
-
-# 功能测试
-python verba_aurea/tests/functional/test_image_processing.py
-
-# 使用pytest运行（需要安装pytest）
-pytest verba_aurea/tests/unit/ -v
-pytest verba_aurea/tests/integration/ -v
-```
-
-### 测试覆盖
-
-- **API端点测试** - 验证所有API端点的功能和响应
-- **图片处理测试** - 验证图片识别、保留和质量保持
-- **文档分析测试** - 验证文档结构分析和元素提取
-- **配置管理测试** - 验证配置加载、验证和更新
-- **错误处理测试** - 验证各种错误情况的处理
-- **性能测试** - 验证处理速度和资源使用
-
-### 测试报告
-
-测试完成后会生成详细的测试报告，包括：
-- 测试通过率
-- 性能指标
-- 错误详情
-- 改进建议
-
-查看历史测试报告：[docs/API_TEST_REPORT.md](./docs/API_TEST_REPORT.md)
+4. 处理后的文档将保存在`processed`(默认)或自定义的输出文件夹中
 
 ### 配置说明
 
@@ -337,15 +169,24 @@ pytest verba_aurea/tests/integration/ -v
 6. **分割标记插入** - 在选定的位置插入`<!--split-->`标记
 7. **格式保留** - 保留原文档的格式信息并保存为新文档
 
+## Web界面特性
+
+- **现代化界面** - 响应式设计，支持桌面和移动设备
+- **拖拽上传** - 支持拖拽文件到上传区域
+- **批量处理** - 一次处理多个文档，提高工作效率
+- **实时进度** - 显示处理进度和当前处理文件
+- **文件管理** - 上传后可预览和管理文件列表
+- **配置调整** - 在线调整处理参数
+- **结果下载** - 处理完成后统一打包下载
+
 ## 开发计划
 
-- ✅ RESTful API服务
-- ✅ Docker容器化部署
-- 🔄 添加对更多文档格式的支持（PDF、TXT等）
-- 🔄 实现图形用户界面
+- ✅ Web界面支持
+- ✅ 批量文档处理
+- ✅ 拖拽上传功能
+- 🔄 添加对更多文档格式的支持
 - 🔄 增强语义分析能力，使用更先进的NLP模型
-- 🔄 支持批量文档处理API
-- 🔄 添加文档处理队列和异步处理
+- 🔄 添加文档预览功能
 
 ## 常见问题
 
@@ -361,13 +202,88 @@ A: 提高 `sentence_integrity_weight` 参数值，默认值为 8.0，可以尝�
 
 A: 对于特殊格式，可以通过调整高级设置中的评分参数来适应不同的文档结构。
 
-**Q: API服务和命令行工具有什么区别？**
+## API 接口
 
-A: API服务提供RESTful接口，支持远程调用和系统集成，适合生产环境；命令行工具适合本地批量处理和开发测试。
+以下为主要API端点，所有接口均返回JSON（除下载接口）：
 
-**Q: 如何在生产环境中部署API服务？**
+- 健康检查
+  - 方法: GET
+  - 路径: /api/health
+  - 示例:
+    ```bash
+    curl -s http://localhost:18080/api/health
+    ```
 
-A: 推荐使用Docker部署，运行 `docker-compose --profile production up -d` 即可启动包含Nginx反向代理的完整服务。
+- 获取/更新配置
+  - 方法: GET / POST
+  - 路径: /api/config
+  - 示例（获取配置）:
+    ```bash
+    curl -s http://localhost:18080/api/config
+    ```
+  - 示例（更新配置）:
+    ```bash
+    curl -s -X POST http://localhost:18080/api/config \
+      -H "Content-Type: application/json" \
+      -d '{"document_settings": {"max_length": 1200, "min_length": 200}}'
+    ```
+
+- 上传文件（只上传，不立即处理）
+  - 方法: POST (multipart/form-data)
+  - 路径: /api/upload
+  - 参数: file (必填), session_id (可选，首次不传会自动创建)
+  - 返回: { success, session_id, file_id, original_filename, file_size, message }
+  - 示例:
+    ```bash
+    curl -s -F "file=@/path/to/file.docx" http://localhost:18080/api/upload
+    ```
+
+- 启动批量处理
+  - 方法: POST (application/json)
+  - 路径: /api/batch/process
+  - 请求体: { "session_id": "<会话ID>" }
+  - 返回: { success, session_id, processed_count, failed_count, download_url, message }
+  - 示例:
+    ```bash
+    curl -s -X POST http://localhost:18080/api/batch/process \
+      -H "Content-Type: application/json" \
+      -d '{"session_id": "<SESSION_ID>"}'
+    ```
+
+- 查询批量处理状态
+  - 方法: GET
+  - 路径: /api/batch/status/<session_id>
+  - 返回: { status, progress, processed_count, total_count, current_file, files[], download_url }
+  - 示例:
+    ```bash
+    curl -s http://localhost:18080/api/batch/status/<SESSION_ID>
+    ```
+
+- 批量结果下载（ZIP）
+  - 方法: GET
+  - 路径: /api/batch/download/<session_id>
+  - 返回: ZIP文件（Content-Disposition 附件）
+  - 示例:
+    ```bash
+    curl -L -o result.zip http://localhost:18080/api/batch/download/<SESSION_ID>
+    ```
+
+- 从批处理中移除文件
+  - 方法: POST (application/json)
+  - 路径: /api/batch/remove-file
+  - 请求体: { "session_id": "<会话ID>", "file_id": "<文件ID>" }
+  - 返回: { success, message }
+  - 示例:
+    ```bash
+    curl -s -X POST http://localhost:18080/api/batch/remove-file \
+      -H "Content-Type: application/json" \
+      -d '{"session_id": "<SESSION_ID>", "file_id": "<FILE_ID>"}'
+    ```
+
+- 单文件下载（兼容保留）
+  - 方法: GET
+  - 路径: /api/download/<file_id>
+  - 说明: 仅对历史接口兼容保留，新流程建议使用批量下载
 
 ## 贡献指南
 
