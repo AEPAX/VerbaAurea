@@ -42,7 +42,7 @@ except ImportError:
 # 导入项目模块
 from config_manager import load_config, show_config, edit_config, save_config
 from parallel_processor import process_all_documents
-from utils import check_dependencies
+from utils import check_dependencies, get_log_file_path, get_error_log_file_path
 
 # 创建Rich控制台
 console = Console()
@@ -241,6 +241,31 @@ def display_processing_results(total_files, processed_files, failed_files, elaps
             width=80
         ))
 
+        # 显示日志文件位置
+        # 需要从logger获取文件路径
+        try:
+            from utils import setup_logger, get_error_logger
+            logger = setup_logger()
+            error_logger = get_error_logger()
+
+            log_file = get_log_file_path(logger) if logger else None
+            error_log_file = get_error_log_file_path()
+
+            if log_file or error_log_file:
+                log_info_text = f"[yellow]所有处理信息已记录到日志文件:[/yellow]\n[cyan]{log_file or '未找到'}[/cyan]" if log_file else ""
+                error_log_text = f"\n\n[yellow]错误信息已记录到错误日志文件:[/yellow]\n[cyan]{error_log_file or '未找到'}[/cyan]" if error_log_file else ""
+
+                console.print()
+                console.print(Panel(
+                    f"{log_info_text}{error_log_text}\n\n[dim]请查看日志文件以获取详细的处理信息和错误原因[/dim]",
+                    title="[bold yellow]日志文件[/bold yellow]",
+                    border_style="yellow",
+                    box=box.ROUNDED,
+                    width=80
+                ))
+        except Exception as e:
+            console.print(f"[yellow]无法获取日志文件路径: {str(e)}[/yellow]")
+
 
 def display_config(config):
     """显示当前配置的美化版本"""
@@ -366,7 +391,6 @@ def edit_config_interactive(config):
     ))
 
 
-
 def main():
     """主函数"""
     # 清屏
@@ -379,6 +403,20 @@ def main():
     # 检查必要的库
     console.print("[dim]正在检查系统依赖...[/dim]")
     check_dependencies()
+
+    # 初始化日志系统（每次运行生成新的日志文件）
+    try:
+        from utils import setup_logger, get_error_logger, get_log_file_path, get_error_log_file_path
+        logger = setup_logger()
+        error_logger = get_error_logger()
+        log_file = get_log_file_path(logger)
+        error_log_file = get_error_log_file_path()
+        if log_file:
+            console.print(f"[dim]日志文件: {log_file}[/dim]")
+        if error_log_file:
+            console.print(f"[dim]错误日志文件: {error_log_file}[/dim]")
+    except Exception as e:
+        console.print(f"[yellow]警告: 日志系统初始化失败: {str(e)}[/yellow]")
 
     # 加载配置
     config = load_config()

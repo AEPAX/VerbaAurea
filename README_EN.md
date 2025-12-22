@@ -6,7 +6,7 @@ VerbaAurea is an intelligent document preprocessing tool dedicated to transformi
 
 ## Project Features
 
-- **Intelligent Document Segmentation** - Precise segmentation based on sentence boundaries and semantic integrity, supporting DOCX format documents
+- **Intelligent Document Segmentation** - Precise segmentation based on sentence boundaries and semantic integrity, supporting DOCX and PDF format documents
 - **Multi-dimensional Scoring System** - Considers titles, sentence integrity, paragraph length, and other factors to determine optimal split points
 - **Semantic Integrity Protection** - Prioritizes the completeness of sentences and semantic units, avoiding breaks in the middle of sentences
 - **Web Interface Support** - Provides modern web interface with drag-and-drop upload and batch processing
