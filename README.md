@@ -33,6 +33,7 @@ VerbaAurea 是一个智能文档预处理工具，致力于将原始文档转化
 ├── web_service.py          # Web服务主程序
 ├── config_manager.py       # 配置管理
 ├── document_processor.py   # 文档处理核心
+├── pdf_processor.py        # pdf文档处理核心
 ├── text_analysis.py        # 文本分析功能
 ├── parallel_processor.py   # 并行处理实现
 ├── utils.py                # 工具函数
@@ -100,7 +101,7 @@ python web_service.py
 2. 打开浏览器访问 `http://localhost:18080`
 
 3. 使用Web界面进行文档处理：
-   - **上传文件**：拖拽DOCX或PDF文件到上传区域或点击选择文件
+   - **上传文件**：拖拽DOCX或PDF文件到上传区域或点击选择文件（若PDF为纯图片，将自动尝试调用 minerU 转换）
    - **批量处理**：支持同时上传多个文件
    - **文件管理**：可以预览已上传文件，移除不需要的文件
    - **开始处理**：点击"开始处理"按钮统一处理所有文件

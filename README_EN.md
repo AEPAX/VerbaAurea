@@ -33,6 +33,7 @@ VerbaAurea is an intelligent document preprocessing tool dedicated to transformi
 ├── web_service.py          # Web service main program
 ├── config_manager.py       # Configuration management
 ├── document_processor.py   # Document processing core
+├── pdf_processor.py        # Pdf processing core
 ├── text_analysis.py        # Text analysis functionality
 ├── parallel_processor.py   # Parallel processing implementation
 ├── utils.py                # Utility functions

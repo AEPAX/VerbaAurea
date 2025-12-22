@@ -25,8 +25,7 @@ from copy import deepcopy
 # 导入日志工具
 try:
     from utils import setup_logger, log_error, log_info, log_warning, log_debug
-
-    _logger = setup_logger()  # 主日志记录器（记录所有级别到文件）
+    from parallel_processor import _logger
 except Exception:
     _logger = None
 
@@ -68,29 +67,29 @@ def insert_split_markers(input_file, output_file, config):
     # 检查是否是PDF文件，如果是则先转换为DOCX
     input_path = Path(input_file)
     temp_docx_path = None
-
+    
     if input_path.suffix.lower() == '.pdf':
         log_info(_logger, f"检测到PDF文件，正在转换为DOCX格式: {input_file}")
-
+        
         try:
             from pdf_processor import pdf_to_docx
-
+            
             # 创建临时DOCX文件
             temp_dir = tempfile.gettempdir()
             temp_docx_path = os.path.join(temp_dir, f"temp_{os.path.basename(input_file)}.docx")
-
+            
             # 转换PDF到DOCX
             converted_path = pdf_to_docx(input_file, temp_docx_path, debug_mode)
-
+            
             if converted_path is None:
                 error_msg = f"PDF转换失败: 转换函数返回None"
                 log_error(_logger, input_file, error_msg, "PDFConversionError")
                 return False
-
+            
             # 使用转换后的DOCX文件
             input_file = converted_path
             log_info(_logger, f"PDF转换完成，使用临时文件: {input_file}")
-
+                
         except ImportError as e:
             error_msg = f"PDF处理模块未找到，请安装PDF处理库: {str(e)}"
             log_error(_logger, input_file, e, "ImportError", traceback.format_exc())
@@ -182,12 +181,12 @@ def find_split_points(elements_info, max_length, min_length,
          cooldown 数由 advanced_settings.heading_cooldown_elements 控制，默认 2。
     """
     force_heading = adv_settings.get("force_split_before_heading", True)
-    cooldown_len = adv_settings.get("heading_cooldown_elements", 2)
+    cooldown_len  = adv_settings.get("heading_cooldown_elements", 2)
 
     split_points = []
     current_length = 0
     last_potential = -1
-    cooldown_after_heading = 0  # ← 冷却段计数器
+    cooldown_after_heading = 0   # ← 冷却段计数器
 
     for idx, elem in enumerate(elements_info):
 
@@ -197,7 +196,7 @@ def find_split_points(elements_info, max_length, min_length,
                 split_points.append(idx)
             current_length = 0
             last_potential = idx
-            cooldown_after_heading = cooldown_len  # ← 开启冷却
+            cooldown_after_heading = cooldown_len     # ← 开启冷却
             if debug_mode:
                 prev = (elem['text'][:30] + '...') if elem['text'] else '[table]'
                 log_debug(_logger, f"  #{idx:03d} (heading) 强制分段 «{prev}»")
@@ -253,6 +252,7 @@ def calculate_split_score(idx, elem, elements_info, current_length,
                           min_length, max_length, sentence_integrity_weight,
                           heading_score_bonus, sentence_end_score_bonus,
                           length_score_factor, split_points, adv_settings):
+
     score = 0
     heading_after_penalty = adv_settings.get("heading_after_penalty", 12)
 
@@ -263,25 +263,25 @@ def calculate_split_score(idx, elem, elements_info, current_length,
         if elem['ends_with_period']:
             score += sentence_end_score_bonus
 
-        if idx > 0 and elements_info[idx - 1]['type'] == 'para' and \
-                is_sentence_boundary(elements_info[idx - 1]['text'], elem['text']):
+        if idx > 0 and elements_info[idx-1]['type'] == 'para' and \
+           is_sentence_boundary(elements_info[idx-1]['text'], elem['text']):
             score += sentence_integrity_weight
         else:
             score -= 10
     else:
-        score += 6  # 表格基分
+        score += 6          # 表格基分
 
     # 紧跟标题统一扣分
     prev = idx - 1
     while prev >= 0 and elements_info[prev]['type'] == 'para' and \
-            elements_info[prev]['length'] == 0:
+          elements_info[prev]['length'] == 0:
         prev -= 1
     if prev >= 0 and elements_info[prev]['is_heading']:
         score -= heading_after_penalty
 
     # 长度因子
     if current_length >= min_length:
-        score += min(4, (current_length - min_length) // length_score_factor)
+        score += min(4, (current_length - min_length)//length_score_factor)
     elif current_length < min_length * 0.7:
         score -= 5
 
@@ -302,16 +302,16 @@ def refine_split_points(elements_info, split_points, search_window, debug_mode):
     for sp in split_points:
         # 若分割点本身或紧邻标题，则完全保留
         if elements_info[sp]['is_heading'] \
-                or (sp > 0 and elements_info[sp - 1]['is_heading']):
+           or (sp > 0 and elements_info[sp-1]['is_heading']):
             refined.append(sp)
             continue
 
         # 仅对 “段落 ↔ 段落” 之间尝试句边界微调
         need_adjust = False
         if sp > 0 and \
-                elements_info[sp - 1]['type'] == 'para' and \
-                elements_info[sp]['type'] == 'para':
-            need_adjust = not is_sentence_boundary(elements_info[sp - 1]['text'],
+           elements_info[sp-1]['type'] == 'para' and \
+           elements_info[sp]['type'] == 'para':
+            need_adjust = not is_sentence_boundary(elements_info[sp-1]['text'],
                                                    elements_info[sp]['text'])
 
         if need_adjust:
@@ -321,7 +321,6 @@ def refine_split_points(elements_info, split_points, search_window, debug_mode):
             refined.append(sp)
 
     return sorted(set(refined))
-
 
 def merge_heading_with_body(elements_info, split_points):
     """
@@ -355,6 +354,9 @@ def merge_heading_with_body(elements_info, split_points):
     return sorted(keep)
 
 
+
+
+
 def copy_image_relationships(source_doc, target_doc, debug_mode=False):
     """
     复制源文档中的图片关系到目标文档
@@ -379,7 +381,7 @@ def copy_image_relationships(source_doc, target_doc, debug_mode=False):
                     rId_mapping[rId] = new_rId
 
                     if debug_mode:
-                        log_debug(_logger, f"  图片关系复制: {rId} -> {new_rId} ({len(img_data) / 1024:.1f}KB)")
+                        log_debug(_logger, f"  图片关系复制: {rId} -> {new_rId} ({len(img_data)/1024:.1f}KB)")
 
                 except Exception as e:
                     log_warning(_logger, f"  复制图片关系 {rId} 时出错: {str(e)}")
@@ -421,9 +423,9 @@ def copy_single_table(table, new_doc, debug_mode):
 def create_output_document(doc, new_doc, split_points, output_file, debug_mode, config=None):
     split_marker_cnt = 0
     para_iter = iter(doc.paragraphs)
-    tbl_iter = iter(doc.tables)
+    tbl_iter  = iter(doc.tables)
     next_para = next(para_iter, None)
-    next_tbl = next(tbl_iter, None)
+    next_tbl  = next(tbl_iter, None)
     idx = -1
 
     # 检查是否需要保留图片
@@ -464,6 +466,7 @@ def create_output_document(doc, new_doc, split_points, output_file, debug_mode, 
     new_doc.save(output_file)
     log_info(_logger, f"✓ 保存: {output_file} (split={split_marker_cnt})")
     return True
+
 
 
 def copy_paragraph(src_para, new_doc, debug_mode, rId_mapping=None):

@@ -23,8 +23,7 @@ from document_processor import insert_split_markers
 from config_manager import load_config, save_config
 from utils import setup_logger, log_error, log_info, log_warning
 
-# 设置日志记录器
-_logger = setup_logger()
+from parallel_processor import _logger
 
 # 创建Flask应用
 app = Flask(__name__)
@@ -47,7 +46,6 @@ processing_status = {}
 # 批量处理会话管理
 batch_sessions = {}
 
-
 def insert_split_markers_with_progress(input_file, output_file, config, progress_callback=None):
     """
     带进度回调的文档处理函数
@@ -67,17 +65,15 @@ def insert_split_markers_with_progress(input_file, output_file, config, progress
         log_error(_logger, input_file, e, type(e).__name__, traceback.format_exc())
         return False
 
-
 def allowed_file(filename):
     """检查文件类型是否允许"""
     return '.' in filename and \
-        filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def cleanup_old_files():
     """清理超过24小时的临时文件"""
     cutoff_time = datetime.now() - timedelta(hours=24)
-
+    
     for folder in [UPLOAD_FOLDER, PROCESSED_FOLDER]:
         for file_path in Path(folder).glob('*'):
             if file_path.is_file():
@@ -89,18 +85,15 @@ def cleanup_old_files():
                     except Exception as e:
                         log_warning(_logger, f"清理文件失败 {file_path}: {e}")
 
-
 @app.route('/')
 def index():
     """主页面"""
     return render_template('index.html')
 
-
 @app.route('/static/<path:filename>')
 def static_files(filename):
     """静态文件服务"""
     return send_from_directory('static', filename)
-
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
@@ -166,7 +159,6 @@ def upload_file():
     except Exception as e:
         return jsonify({'error': f'上传失败: {str(e)}'}), 500
 
-
 @app.route('/api/download/<file_id>')
 def download_file(file_id):
     """文件下载API - 返回ZIP压缩包"""
@@ -208,7 +200,6 @@ def download_file(file_id):
 
     except Exception as e:
         return jsonify({'error': f'下载失败: {str(e)}'}), 500
-
 
 @app.route('/api/batch/process', methods=['POST'])
 def process_batch():
@@ -260,7 +251,7 @@ def process_batch():
                     else:
                         output_filename_for_zip = f"processed_{original_filename}"
                         safe_output_filename = f"processed_{secure_filename(original_filename)}"
-
+                    
                     output_path = os.path.join(PROCESSED_FOLDER, f"{file_info['file_id']}_{safe_output_filename}")
 
                     # 处理文档
@@ -280,9 +271,9 @@ def process_batch():
                     else:
                         failed_files.append(file_info['original_filename'])
                         # 记录到日志
-                        log_error(_logger, file_info['input_path'],
-                                  "处理失败: insert_split_markers返回False或输出文件不存在",
-                                  "ProcessingError")
+                        log_error(_logger, file_info['input_path'], 
+                                "处理失败: insert_split_markers返回False或输出文件不存在", 
+                                "ProcessingError")
 
                 except Exception as e:
                     error_msg = f"{file_info['original_filename']} (错误: {str(e)})"
@@ -316,7 +307,6 @@ def process_batch():
             batch_sessions[session_id]['error'] = str(e)
         return jsonify({'error': f'批量处理失败: {str(e)}'}), 500
 
-
 @app.route('/api/batch/download/<session_id>')
 def download_batch(session_id):
     """批量下载API"""
@@ -345,7 +335,6 @@ def download_batch(session_id):
     except Exception as e:
         return jsonify({'error': f'下载失败: {str(e)}'}), 500
 
-
 @app.route('/api/batch/status/<session_id>')
 def get_batch_status(session_id):
     """获取批量处理状态"""
@@ -367,7 +356,6 @@ def get_batch_status(session_id):
         'start_time': session.get('start_time', ''),
         'end_time': session.get('end_time', '')
     })
-
 
 @app.route('/api/batch/remove-file', methods=['POST'])
 def remove_file_from_batch():
@@ -403,15 +391,13 @@ def remove_file_from_batch():
     except Exception as e:
         return jsonify({'error': f'移除文件失败: {str(e)}'}), 500
 
-
 @app.route('/api/status/<file_id>')
 def get_status(file_id):
     """获取文件处理状态"""
     if file_id not in processing_status:
         return jsonify({'error': '文件不存在'}), 404
-
+    
     return jsonify(processing_status[file_id])
-
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
@@ -422,7 +408,6 @@ def get_config():
     except Exception as e:
         return jsonify({'error': f'获取配置失败: {str(e)}'}), 500
 
-
 @app.route('/api/config', methods=['POST'])
 def update_config():
     """更新配置"""
@@ -430,13 +415,14 @@ def update_config():
         new_config = request.get_json()
         if not new_config:
             return jsonify({'error': '无效的配置数据'}), 400
-
+        
         # 保存配置
         save_config(new_config)
         return jsonify({'success': True, 'message': '配置已更新'})
-
+        
     except Exception as e:
         return jsonify({'error': f'更新配置失败: {str(e)}'}), 500
+
 
 
 @app.route('/api/health')
@@ -447,7 +433,6 @@ def health_check():
         'timestamp': datetime.now().isoformat(),
         'version': '1.0.0'
     })
-
 
 def cleanup_task():
     """定期清理任务"""
@@ -495,21 +480,17 @@ def cleanup_task():
     for session_id in expired_sessions:
         del batch_sessions[session_id]
 
-
 if __name__ == '__main__':
     # 设置控制台编码
     import sys
-
     if sys.platform == 'win32':
         import codecs
-
         sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
         sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
 
     # 初始化错误日志记录器
     try:
         from utils import get_error_logger, get_log_file_path, get_error_log_file_path
-
         error_logger = get_error_logger()
         log_file = get_log_file_path(_logger)
         error_log_file = get_error_log_file_path()
@@ -519,7 +500,7 @@ if __name__ == '__main__':
             print(f"📝 错误日志文件: {error_log_file}")
     except Exception:
         pass
-
+    
     log_info(_logger, "🚀 启动 VerbaAurea Web服务...")
     log_info(_logger, f"📍 服务地址: http://localhost:18080")
     log_info(_logger, f"📁 上传目录: {os.path.abspath(UPLOAD_FOLDER)}")
@@ -528,9 +509,9 @@ if __name__ == '__main__':
     print("📍 服务地址: http://localhost:18080")
     print("📁 上传目录:", os.path.abspath(UPLOAD_FOLDER))
     print("📁 输出目录:", os.path.abspath(PROCESSED_FOLDER))
-
+    
     # 启动时清理一次
     cleanup_task()
-
+    
     # 启动Flask应用
     app.run(host='0.0.0.0', port=18080, debug=True)

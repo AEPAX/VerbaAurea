@@ -7,14 +7,16 @@ PDF处理模块
 """
 
 import os
+import subprocess
 from pathlib import Path
 from docx import Document
 from docx.shared import Pt
 from io import BytesIO
 
+# 导入日志工具
 try:
     from utils import setup_logger, log_info, log_warning, log_error
-    _logger = setup_logger()
+    from parallel_processor import _logger
 except Exception:
     _logger = None
 
@@ -32,6 +34,15 @@ def pdf_to_docx(pdf_path, docx_path=None, debug_mode=False):
         转换后的DOCX文件路径，失败返回None
     """
     try:
+        # 若PDF为纯图片（无文本），优先使用 minerU 转换
+        if _is_image_only_pdf(pdf_path):
+            log_info(_logger, f"检测到图片型PDF，调用 minerU 转换: {pdf_path}")
+            docx_via_mineru = _convert_with_mineru(pdf_path, docx_path)
+            if docx_via_mineru:
+                return docx_via_mineru
+            else:
+                log_warning(_logger, "minerU 转换失败，回退至内置转换流程")
+
         # 尝试使用PyMuPDF (fitz) - 更强大的PDF处理库
         try:
             import fitz  # PyMuPDF
@@ -55,6 +66,55 @@ def pdf_to_docx(pdf_path, docx_path=None, debug_mode=False):
         
         raise ImportError("未找到PDF处理库，请安装 PyMuPDF、pdfplumber 或 PyPDF2")
         
+    except Exception as e:
+        log_error(_logger, pdf_path, e, type(e).__name__, None)
+        return None
+
+
+def _is_image_only_pdf(pdf_path: str | Path) -> bool:
+    """快速检测PDF是否无可提取文本（视为图片型PDF）"""
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        return False
+
+    try:
+        doc = fitz.open(pdf_path)
+        text_len = 0
+        for page in doc:
+            text_len += len(page.get_text().strip())
+            if text_len > 0:
+                break
+        doc.close()
+        return text_len == 0
+    except Exception:
+        return False
+
+
+def _convert_with_mineru(pdf_path: str | Path, docx_path: str | Path | None):
+    """
+    使用 minerU 将图片型 PDF 转换为 DOCX。
+    需要环境变量 MINERU_CMD 指定命令模板，默认: "mineru convert --input {input} --output {output}"
+    """
+    cmd_tpl = os.getenv("MINERU_CMD", "mineru convert --input {input} --output {output}")
+    if not cmd_tpl:
+        log_warning(_logger, "未配置 MINERU_CMD，无法调用 minerU 进行图片型PDF转换")
+        return None
+
+    if docx_path is None:
+        docx_path = str(Path(pdf_path).with_suffix(".docx"))
+
+    try:
+        cmd = cmd_tpl.format(input=str(pdf_path), output=str(docx_path))
+        log_info(_logger, f"执行 minerU 命令: {cmd}")
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300)
+        if result.returncode != 0:
+            log_error(_logger, pdf_path, f"minerU 转换失败: {result.stderr}", "MinerUError", result.stderr)
+            return None
+        if not Path(docx_path).exists():
+            log_error(_logger, pdf_path, "minerU 转换后未找到输出文件", "MinerUError", None)
+            return None
+        return docx_path
     except Exception as e:
         log_error(_logger, pdf_path, e, type(e).__name__, None)
         return None

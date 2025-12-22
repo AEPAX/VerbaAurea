@@ -14,10 +14,12 @@ from multiprocessing import Pool, cpu_count, Manager
 from utils import get_script_dir, setup_logger, log_error, log_info, log_warning
 
 # 设置日志记录器
-_logger = setup_logger()
+import logging
+_logger = logging.getLogger('VerbaAurea')
 
 
 def collect_files_to_process(config):
+
     """收集需要处理的文件列表"""
     # 获取脚本当前路径
     current_dir = get_script_dir()
@@ -58,7 +60,7 @@ def collect_files_to_process(config):
                     output_filename = os.path.splitext(file)[0] + '.docx'
                 else:
                     output_filename = file
-
+                
                 output_path = os.path.join(output_dir, output_filename)
 
                 # 添加到待处理文件列表
@@ -81,12 +83,12 @@ def _process_file(args):
 
         # 处理文件
         success = insert_split_markers(input_path, output_path, config)
-
+        
         # 如果处理失败但没有抛出异常，记录到日志
         if not success:
             error_msg = "处理失败: insert_split_markers返回False"
             log_error(_logger, input_path, error_msg, "ProcessingError")
-
+        
         return {
             'input_path': input_path,
             'output_path': output_path,
@@ -119,12 +121,12 @@ def _process_batch(batch_args):
 
             # 处理文件
             success = insert_split_markers(input_path, output_path, config)
-
+            
             # 如果处理失败但没有抛出异常，记录到日志
             if not success:
                 error_msg = "处理失败: insert_split_markers返回False"
                 log_error(_logger, input_path, error_msg, "ProcessingError")
-
+            
             results.append({
                 'input_path': input_path,
                 'output_path': output_path,
@@ -274,8 +276,7 @@ def process_sequentially(config):
             # 显示进度
             progress = (i + 1) / total_files * 100
             status = "成功" if result else "失败"
-            log_info(_logger,
-                     f"进度: [{i + 1}/{total_files}] {progress:.1f}% - {os.path.basename(input_path)} {status}")
+            log_info(_logger, f"进度: [{i + 1}/{total_files}] {progress:.1f}% - {os.path.basename(input_path)} {status}")
 
         except Exception as e:
             error_msg = f"处理 {input_path} 时出错: {str(e)}"
