@@ -9,6 +9,9 @@
 from docx import Document
 from text_analysis import extract_elements_info
 import os
+import tempfile
+import traceback
+from pathlib import Path
 from text_analysis import (
     is_sentence_boundary,
     find_nearest_sentence_boundary
@@ -19,10 +22,18 @@ from docx.oxml.ns import qn
 from io import BytesIO
 from copy import deepcopy
 
+# 导入日志工具
+try:
+    from utils import setup_logger, log_error, log_info, log_warning, log_debug
+    from parallel_processor import _logger
+except Exception:
+    _logger = None
+
 
 def insert_split_markers(input_file, output_file, config):
     """
     在Word文档中根据算法自动嵌入<!--split-->标记
+    支持DOCX和PDF格式
 
     使用多种策略确定分隔点:
     1. 标题识别
@@ -46,19 +57,59 @@ def insert_split_markers(input_file, output_file, config):
     sentence_end_score_bonus = adv_settings["sentence_end_score_bonus"]
     length_score_factor = adv_settings["length_score_factor"]
 
-    if debug_mode:
-        print(f"正在处理文档: {input_file}")
+    log_info(_logger, f"开始处理文档: {input_file}")
 
     # 如果配置为跳过已存在文件，且输出文件已存在，则跳过处理
     if proc_options["skip_existing"] and os.path.exists(output_file):
-        if debug_mode:
-            print(f"跳过已存在文件: {output_file}")
+        log_info(_logger, f"跳过已存在文件: {output_file}")
         return True
+
+    # 检查是否是PDF文件，如果是则先转换为DOCX
+    input_path = Path(input_file)
+    temp_docx_path = None
+    
+    if input_path.suffix.lower() == '.pdf':
+        log_info(_logger, f"检测到PDF文件，正在转换为DOCX格式: {input_file}")
+        
+        try:
+            from pdf_processor import pdf_to_docx
+            
+            # 创建临时DOCX文件
+            temp_dir = tempfile.gettempdir()
+            temp_docx_path = os.path.join(temp_dir, f"temp_{os.path.basename(input_file)}.docx")
+            
+            # 转换PDF到DOCX
+            converted_path = pdf_to_docx(input_file, temp_docx_path, debug_mode)
+            
+            if converted_path is None:
+                error_msg = f"PDF转换失败: 转换函数返回None"
+                log_error(_logger, input_file, error_msg, "PDFConversionError")
+                return False
+            
+            # 使用转换后的DOCX文件
+            input_file = converted_path
+            log_info(_logger, f"PDF转换完成，使用临时文件: {input_file}")
+                
+        except ImportError as e:
+            error_msg = f"PDF处理模块未找到，请安装PDF处理库: {str(e)}"
+            log_error(_logger, input_file, e, "ImportError", traceback.format_exc())
+            return False
+        except Exception as e:
+            error_msg = f"PDF转换失败: {str(e)}"
+            log_error(_logger, input_file, e, type(e).__name__, traceback.format_exc())
+            return False
 
     try:
         doc = Document(input_file)
     except Exception as e:
-        print(f"无法打开文档 {input_file}: {str(e)}")
+        error_msg = f"无法打开文档 {input_file}: {str(e)}"
+        log_error(_logger, input_file, e, type(e).__name__, traceback.format_exc())
+        # 清理临时文件
+        if temp_docx_path and os.path.exists(temp_docx_path):
+            try:
+                os.remove(temp_docx_path)
+            except:
+                pass
         return False
 
     # 创建新文档
@@ -88,18 +139,31 @@ def insert_split_markers(input_file, output_file, config):
 
     final_split_points = merge_heading_with_body(elements_info, final_split_points)
 
-    if debug_mode:
-        print(f"最终分割点: {final_split_points}")
+    log_debug(_logger, f"最终分割点: {final_split_points}")
 
     # 创建带有分隔符的新文档
-    result = create_output_document(
-        doc,
-        new_doc,
-        final_split_points,
-        output_file,
-        debug_mode,
-        config
-    )
+    try:
+        result = create_output_document(
+            doc,
+            new_doc,
+            final_split_points,
+            output_file,
+            debug_mode,
+            config
+        )
+    except Exception as e:
+        error_msg = f"创建输出文档时出错: {str(e)}"
+        print(error_msg)
+        log_error(_logger, input_file, e, type(e).__name__, traceback.format_exc())
+        result = False
+
+    # 清理临时文件（如果是PDF转换的）
+    if temp_docx_path and os.path.exists(temp_docx_path):
+        try:
+            os.remove(temp_docx_path)
+            log_debug(_logger, f"已清理临时文件: {temp_docx_path}")
+        except Exception as e:
+            log_warning(_logger, f"清理临时文件失败: {temp_docx_path}, 错误: {str(e)}")
 
     return result
 
@@ -135,7 +199,7 @@ def find_split_points(elements_info, max_length, min_length,
             cooldown_after_heading = cooldown_len     # ← 开启冷却
             if debug_mode:
                 prev = (elem['text'][:30] + '...') if elem['text'] else '[table]'
-                print(f"  #{idx:03d} (heading) 强制分段 «{prev}»")
+                log_debug(_logger, f"  #{idx:03d} (heading) 强制分段 «{prev}»")
             continue
 
         # ---------- 空行：始终累长，绝不当候选 ----------
@@ -161,7 +225,7 @@ def find_split_points(elements_info, max_length, min_length,
 
         if debug_mode:
             pv = (elem['text'][:30] + '...') if elem['text'] else '[table]'
-            print(f"  #{idx:03d} ({elem['type']}) len={elem['length']} score={score:.1f} {pv}")
+            log_debug(_logger, f"  #{idx:03d} ({elem['type']}) len={elem['length']} score={score:.1f} {pv}")
 
         # ---------- 命中分割 ----------
         if score >= min_split_score and idx > 0:
@@ -317,14 +381,12 @@ def copy_image_relationships(source_doc, target_doc, debug_mode=False):
                     rId_mapping[rId] = new_rId
 
                     if debug_mode:
-                        print(f"  图片关系复制: {rId} -> {new_rId} ({len(img_data)/1024:.1f}KB)")
+                        log_debug(_logger, f"  图片关系复制: {rId} -> {new_rId} ({len(img_data)/1024:.1f}KB)")
 
                 except Exception as e:
-                    if debug_mode:
-                        print(f"  警告: 复制图片关系 {rId} 时出错: {str(e)}")
+                    log_warning(_logger, f"  复制图片关系 {rId} 时出错: {str(e)}")
     except Exception as e:
-        if debug_mode:
-            print(f"  警告: 复制图片关系时出错: {str(e)}")
+        log_warning(_logger, f"  复制图片关系时出错: {str(e)}")
 
     return rId_mapping
 
@@ -355,8 +417,7 @@ def copy_single_table(table, new_doc, debug_mode):
                         except:
                             pass
     except Exception as e:
-        if debug_mode:
-            print(f"  警告: 处理表格时出错: {str(e)}")
+        log_warning(_logger, f"  处理表格时出错: {str(e)}")
 
 
 def create_output_document(doc, new_doc, split_points, output_file, debug_mode, config=None):
@@ -376,10 +437,10 @@ def create_output_document(doc, new_doc, split_points, output_file, debug_mode, 
     rId_mapping = {}
     if preserve_images:
         rId_mapping = copy_image_relationships(doc, new_doc, debug_mode)
-        if debug_mode and rId_mapping:
-            print(f"  复制了 {len(rId_mapping)} 个图片关系")
-    elif debug_mode:
-        print("  图片保留功能已禁用")
+        if rId_mapping:
+            log_info(_logger, f"  复制了 {len(rId_mapping)} 个图片关系")
+    else:
+        log_info(_logger, "  图片保留功能已禁用")
 
     # 将 Word DOM 再次顺序遍历
     for el in doc._element.body:
@@ -403,8 +464,7 @@ def create_output_document(doc, new_doc, split_points, output_file, debug_mode, 
     # 保存
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     new_doc.save(output_file)
-    if debug_mode:
-        print(f"✓ 保存: {output_file} (split={split_marker_cnt})")
+    log_info(_logger, f"✓ 保存: {output_file} (split={split_marker_cnt})")
     return True
 
 
@@ -465,8 +525,7 @@ def copy_paragraph_text_only(src_para, new_doc, debug_mode):
                     except:
                         pass
     except Exception as e:
-        if debug_mode:
-            print(f"  警告: 复制格式时出错: {str(e)}")
+        log_warning(_logger, f"  复制格式时出错: {str(e)}")
 
 
 def copy_paragraph_with_images(src_para, new_doc, debug_mode, rId_mapping):
@@ -499,8 +558,7 @@ def copy_paragraph_with_images(src_para, new_doc, debug_mode, rId_mapping):
                 copy_text_run(src_run, new_para, debug_mode)
 
     except Exception as e:
-        if debug_mode:
-            print(f"  警告: 复制包含图片的段落时出错: {str(e)}")
+        log_warning(_logger, f"  复制包含图片的段落时出错: {str(e)}")
         # 降级到纯文本复制
         copy_paragraph_text_only(src_para, new_doc, debug_mode)
 
@@ -526,8 +584,7 @@ def copy_text_run(src_run, new_para, debug_mode):
                 except:
                     pass
     except Exception as e:
-        if debug_mode:
-            print(f"  警告: 复制文本run时出错: {str(e)}")
+        log_warning(_logger, f"  复制文本run时出错: {str(e)}")
 
 
 def copy_run_with_images(src_run, new_para, debug_mode, rId_mapping):
@@ -548,12 +605,10 @@ def copy_run_with_images(src_run, new_para, debug_mode, rId_mapping):
                 try:
                     copy_inline_image(shape, new_para, debug_mode, rId_mapping)
                 except Exception as e:
-                    if debug_mode:
-                        print(f"  警告: 复制内联图片时出错: {str(e)}")
+                    log_warning(_logger, f"  复制内联图片时出错: {str(e)}")
 
     except Exception as e:
-        if debug_mode:
-            print(f"  警告: 复制包含图片的run时出错: {str(e)}")
+        log_warning(_logger, f"  复制包含图片的run时出错: {str(e)}")
 
 
 def copy_inline_image(shape_element, new_para, debug_mode, rId_mapping):
@@ -566,8 +621,7 @@ def copy_inline_image(shape_element, new_para, debug_mode, rId_mapping):
 
         old_rId = blip.get(qn('r:embed'))
         if old_rId not in rId_mapping:
-            if debug_mode:
-                print(f"  警告: 找不到图片关系映射: {old_rId}")
+            log_warning(_logger, f"  找不到图片关系映射: {old_rId}")
             return
 
         new_rId = rId_mapping[old_rId]
@@ -585,10 +639,8 @@ def copy_inline_image(shape_element, new_para, debug_mode, rId_mapping):
         new_run = new_para.add_run()
         new_run._element.append(new_drawing)
 
-        if debug_mode:
-            print(f"  图片复制成功: {old_rId} -> {new_rId}")
+        log_debug(_logger, f"  图片复制成功: {old_rId} -> {new_rId}")
 
     except Exception as e:
-        if debug_mode:
-            print(f"  警告: 复制内联图片时出错: {str(e)}")
+        log_warning(_logger, f"  复制内联图片时出错: {str(e)}")
 

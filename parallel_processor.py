@@ -9,8 +9,13 @@
 import os
 import sys
 import time
+import traceback
 from multiprocessing import Pool, cpu_count, Manager
-from utils import get_script_dir
+from utils import get_script_dir, setup_logger, log_error, log_info, log_warning
+
+# 设置日志记录器
+import logging
+_logger = logging.getLogger('VerbaAurea')
 
 
 def collect_files_to_process(config):
@@ -37,9 +42,9 @@ def collect_files_to_process(config):
         if rel_path == ".":  # 当前目录
             rel_path = ""
 
-        # 收集当前目录下的所有Word文档
+        # 收集当前目录下的所有Word文档和PDF文档
         for file in files:
-            if file.endswith(('.docx', '.doc')) and not file.startswith('~$'):  # 排除临时文件
+            if file.endswith(('.docx', '.doc', '.pdf')) and not file.startswith('~$'):  # 排除临时文件
                 # 构建输入和输出路径
                 input_path = os.path.join(root, file)
 
@@ -50,7 +55,13 @@ def collect_files_to_process(config):
                 else:
                     output_dir = output_base_dir
 
-                output_path = os.path.join(output_dir, file)
+                # 如果输入是PDF，输出应该是DOCX格式
+                if file.lower().endswith('.pdf'):
+                    output_filename = os.path.splitext(file)[0] + '.docx'
+                else:
+                    output_filename = file
+                
+                output_path = os.path.join(output_dir, output_filename)
 
                 # 添加到待处理文件列表
                 files_to_process.append((input_path, output_path))
@@ -72,16 +83,24 @@ def _process_file(args):
 
         # 处理文件
         success = insert_split_markers(input_path, output_path, config)
+        
+        # 如果处理失败但没有抛出异常，记录到日志
+        if not success:
+            error_msg = "处理失败: insert_split_markers返回False"
+            log_error(_logger, input_path, error_msg, "ProcessingError")
+        
         return {
             'input_path': input_path,
             'output_path': output_path,
             'success': success,
-            'error': None
+            'error': None if success else error_msg
         }
     except Exception as e:
         # 记录错误信息
         error_msg = f"{type(e).__name__}: {str(e)}"
         print(f"处理文件 {input_path} 时出错: {error_msg}")
+        # 记录到日志文件
+        log_error(_logger, input_path, e, type(e).__name__, traceback.format_exc())
         return {
             'input_path': input_path,
             'output_path': output_path,
@@ -102,16 +121,24 @@ def _process_batch(batch_args):
 
             # 处理文件
             success = insert_split_markers(input_path, output_path, config)
+            
+            # 如果处理失败但没有抛出异常，记录到日志
+            if not success:
+                error_msg = "处理失败: insert_split_markers返回False"
+                log_error(_logger, input_path, error_msg, "ProcessingError")
+            
             results.append({
                 'input_path': input_path,
                 'output_path': output_path,
                 'success': success,
-                'error': None
+                'error': None if success else error_msg
             })
         except Exception as e:
             # 记录错误信息
             error_msg = f"{type(e).__name__}: {str(e)}"
             print(f"处理文件 {input_path} 时出错: {error_msg}")
+            # 记录到日志文件
+            log_error(_logger, input_path, e, type(e).__name__, traceback.format_exc())
             results.append({
                 'input_path': input_path,
                 'output_path': output_path,
@@ -134,8 +161,7 @@ def process_all_documents(config):
     total_files = len(files_to_process)
 
     if total_files == 0:
-        if debug_mode:
-            print("没有找到需要处理的Word文档")
+        log_info(_logger, "没有找到需要处理的文档（支持.docx、.doc和.pdf格式）")
         return 0, 0, []
 
     # 获取性能设置
@@ -158,8 +184,7 @@ def process_all_documents(config):
     batch_size = perf_settings.get("batch_size", 1)
     use_batch = batch_size > 1
 
-    if debug_mode:
-        print(f"启用{'批处理' if use_batch else ''}多进程并行处理，使用 {num_workers} 个工作进程")
+    log_info(_logger, f"启用{'批处理' if use_batch else ''}多进程并行处理，使用 {num_workers} 个工作进程")
 
     processed_files = 0
     failed_files = []
@@ -188,6 +213,9 @@ def process_all_documents(config):
                             processed_files += 1
                         else:
                             failed_files.append(result['input_path'])
+                            # 如果result中有error信息，也记录到日志
+                            if result.get('error'):
+                                log_error(_logger, result['input_path'], result['error'], "ProcessingError")
         else:
             # 单文件处理模式
             work_items = [(input_path, output_path, config) for input_path, output_path in files_to_process]
@@ -198,10 +226,15 @@ def process_all_documents(config):
                         processed_files += 1
                     else:
                         failed_files.append(result['input_path'])
+                        # 如果result中有error信息，也记录到日志
+                        if result.get('error'):
+                            log_error(_logger, result['input_path'], result['error'], "ProcessingError")
+                        # 如果result中有error信息，也记录到日志
+                        if result.get('error'):
+                            log_error(_logger, result['input_path'], result['error'], "ProcessingError")
 
     except Exception as e:
-        if debug_mode:
-            print(f"并行处理过程中发生错误: {str(e)}")
+        log_error(_logger, "并行处理", e, type(e).__name__, traceback.format_exc())
 
     return total_files, processed_files, failed_files
 
@@ -215,14 +248,13 @@ def process_sequentially(config):
     total_files = len(files_to_process)
 
     if total_files == 0:
-        print("没有找到需要处理的Word文档")
+        log_info(_logger, "没有找到需要处理的文档（支持.docx、.doc和.pdf格式）")
         return 0, 0, []
 
     # 将导入移到函数内部，避免循环导入
     from document_processor import insert_split_markers
 
-    if debug_mode:
-        print(f"使用单线程顺序处理 {total_files} 个文件")
+    log_info(_logger, f"使用单线程顺序处理 {total_files} 个文件")
 
     processed_files = 0
     failed_files = []
@@ -237,15 +269,20 @@ def process_sequentially(config):
                 processed_files += 1
             else:
                 failed_files.append(input_path)
+                # 记录到日志
+                error_msg = "处理失败: insert_split_markers返回False"
+                log_error(_logger, input_path, error_msg, "ProcessingError")
 
             # 显示进度
-            if debug_mode:
-                progress = (i + 1) / total_files * 100
-                status = "成功" if result else "失败"
-                print(f"进度: [{i + 1}/{total_files}] {progress:.1f}% - {os.path.basename(input_path)} {status}")
+            progress = (i + 1) / total_files * 100
+            status = "成功" if result else "失败"
+            log_info(_logger, f"进度: [{i + 1}/{total_files}] {progress:.1f}% - {os.path.basename(input_path)} {status}")
 
         except Exception as e:
-            print(f"处理 {input_path} 时出错: {str(e)}")
+            error_msg = f"处理 {input_path} 时出错: {str(e)}"
+            print(error_msg)
+            # 记录到日志文件
+            log_error(_logger, input_path, e, type(e).__name__, traceback.format_exc())
             failed_files.append(input_path)
 
     return total_files, processed_files, failed_files

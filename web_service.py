@@ -12,6 +12,7 @@ import time
 import json
 import shutil
 import zipfile
+import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
 from werkzeug.utils import secure_filename
@@ -20,6 +21,9 @@ from flask import Flask, request, jsonify, send_file, render_template, send_from
 # 导入现有的处理模块
 from document_processor import insert_split_markers
 from config_manager import load_config, save_config
+from utils import setup_logger, log_error, log_info, log_warning
+
+from parallel_processor import _logger
 
 # 创建Flask应用
 app = Flask(__name__)
@@ -28,7 +32,7 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB文件大小限制
 # 配置目录
 UPLOAD_FOLDER = 'uploads'
 PROCESSED_FOLDER = 'processed'
-ALLOWED_EXTENSIONS = {'docx'}
+ALLOWED_EXTENSIONS = {'docx', 'pdf'}
 
 # 确保目录存在
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -58,7 +62,7 @@ def insert_split_markers_with_progress(input_file, output_file, config, progress
 
         return success
     except Exception as e:
-        print(f"处理文档时出错: {e}")
+        log_error(_logger, input_file, e, type(e).__name__, traceback.format_exc())
         return False
 
 def allowed_file(filename):
@@ -77,9 +81,9 @@ def cleanup_old_files():
                 if file_time < cutoff_time:
                     try:
                         file_path.unlink()
-                        print(f"清理过期文件: {file_path}")
+                        log_info(_logger, f"清理过期文件: {file_path}")
                     except Exception as e:
-                        print(f"清理文件失败 {file_path}: {e}")
+                        log_warning(_logger, f"清理文件失败 {file_path}: {e}")
 
 @app.route('/')
 def index():
@@ -104,7 +108,7 @@ def upload_file():
             return jsonify({'error': '没有选择文件'}), 400
 
         if not allowed_file(file.filename):
-            return jsonify({'error': '只支持.docx格式的文件'}), 400
+            return jsonify({'error': '只支持.docx和.pdf格式的文件'}), 400
 
         # 生成唯一文件ID
         file_id = str(uuid.uuid4())
@@ -237,8 +241,17 @@ def process_batch():
                     session['current_file'] = file_info['original_filename']
 
                     # 设置输出路径
-                    output_filename_for_zip = f"processed_{file_info['original_filename']}"  # ZIP中的文件名（保持原始）
-                    safe_output_filename = f"processed_{secure_filename(file_info['original_filename'])}"  # 文件系统安全名称
+                    # 如果输入是PDF，输出应该是DOCX格式
+                    original_filename = file_info['original_filename']
+                    if original_filename.lower().endswith('.pdf'):
+                        # PDF文件输出为DOCX格式
+                        output_filename_base = os.path.splitext(original_filename)[0] + '.docx'
+                        output_filename_for_zip = f"processed_{output_filename_base}"
+                        safe_output_filename = f"processed_{secure_filename(output_filename_base)}"
+                    else:
+                        output_filename_for_zip = f"processed_{original_filename}"
+                        safe_output_filename = f"processed_{secure_filename(original_filename)}"
+                    
                     output_path = os.path.join(PROCESSED_FOLDER, f"{file_info['file_id']}_{safe_output_filename}")
 
                     # 处理文档
@@ -257,9 +270,16 @@ def process_batch():
                             pass
                     else:
                         failed_files.append(file_info['original_filename'])
+                        # 记录到日志
+                        log_error(_logger, file_info['input_path'], 
+                                "处理失败: insert_split_markers返回False或输出文件不存在", 
+                                "ProcessingError")
 
                 except Exception as e:
-                    failed_files.append(f"{file_info['original_filename']} (错误: {str(e)})")
+                    error_msg = f"{file_info['original_filename']} (错误: {str(e)})"
+                    failed_files.append(error_msg)
+                    # 记录详细错误到日志
+                    log_error(_logger, file_info['input_path'], e, type(e).__name__, traceback.format_exc())
 
                 session['processed_count'] = i + 1
 
@@ -468,6 +488,23 @@ if __name__ == '__main__':
         sys.stdout = codecs.getwriter('utf-8')(sys.stdout.detach())
         sys.stderr = codecs.getwriter('utf-8')(sys.stderr.detach())
 
+    # 初始化错误日志记录器
+    try:
+        from utils import get_error_logger, get_log_file_path, get_error_log_file_path
+        error_logger = get_error_logger()
+        log_file = get_log_file_path(_logger)
+        error_log_file = get_error_log_file_path()
+        if log_file:
+            print(f"📝 日志文件: {log_file}")
+        if error_log_file:
+            print(f"📝 错误日志文件: {error_log_file}")
+    except Exception:
+        pass
+    
+    log_info(_logger, "🚀 启动 VerbaAurea Web服务...")
+    log_info(_logger, f"📍 服务地址: http://localhost:18080")
+    log_info(_logger, f"📁 上传目录: {os.path.abspath(UPLOAD_FOLDER)}")
+    log_info(_logger, f"📁 输出目录: {os.path.abspath(PROCESSED_FOLDER)}")
     print("🚀 启动 VerbaAurea Web服务...")
     print("📍 服务地址: http://localhost:18080")
     print("📁 上传目录:", os.path.abspath(UPLOAD_FOLDER))

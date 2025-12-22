@@ -6,7 +6,7 @@ VerbaAurea 是一个智能文档预处理工具，致力于将原始文档转化
 
 ## 项目特点
 
-- **智能文档分割** - 基于句子边界和语义完整性进行精准分段，支持DOCX格式文档
+- **智能文档分割** - 基于句子边界和语义完整性进行精准分段，支持DOCX和PDF格式文档
 - **多维度评分系统** - 考虑标题、句子完整性、段落长度等多种因素决定最佳分割点
 - **语义完整性保护** - 优先保证句子和语义单元的完整，避免在句子中间断开
 - **Web界面支持** - 提供现代化的Web界面，支持拖拽上传和批量处理
@@ -33,6 +33,7 @@ VerbaAurea 是一个智能文档预处理工具，致力于将原始文档转化
 ├── web_service.py          # Web服务主程序
 ├── config_manager.py       # 配置管理
 ├── document_processor.py   # 文档处理核心
+├── pdf_processor.py        # pdf文档处理核心
 ├── text_analysis.py        # 文本分析功能
 ├── parallel_processor.py   # 并行处理实现
 ├── utils.py                # 工具函数
@@ -100,7 +101,7 @@ python web_service.py
 2. 打开浏览器访问 `http://localhost:18080`
 
 3. 使用Web界面进行文档处理：
-   - **上传文件**：拖拽DOCX文件到上传区域或点击选择文件
+   - **上传文件**：拖拽DOCX或PDF文件到上传区域或点击选择文件（若PDF为纯图片，将自动尝试调用 minerU 转换）
    - **批量处理**：支持同时上传多个文件
    - **文件管理**：可以预览已上传文件，移除不需要的文件
    - **开始处理**：点击"开始处理"按钮统一处理所有文件
@@ -184,7 +185,7 @@ python main.py
 - ✅ Web界面支持
 - ✅ 批量文档处理
 - ✅ 拖拽上传功能
-- 🔄 添加对更多文档格式的支持
+- ✅ PDF格式支持
 - 🔄 增强语义分析能力，使用更先进的NLP模型
 - 🔄 添加文档预览功能
 
@@ -235,7 +236,10 @@ A: 对于特殊格式，可以通过调整高级设置中的评分参数来适�
   - 返回: { success, session_id, file_id, original_filename, file_size, message }
   - 示例:
     ```bash
+    # 上传DOCX文件
     curl -s -F "file=@/path/to/file.docx" http://localhost:18080/api/upload
+    # 上传PDF文件
+    curl -s -F "file=@/path/to/file.pdf" http://localhost:18080/api/upload
     ```
 
 - 启动批量处理
